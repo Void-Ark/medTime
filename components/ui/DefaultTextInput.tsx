@@ -6,11 +6,14 @@ import {
   View,
 } from "react-native";
 import React from "react";
+import { useAppTheme } from "@/providers/themeProvider";
 
 export interface DefaultTextInputProps extends TextInputProps {
   title: string;
 }
 const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
+  const { theme, isDarkMode } = useAppTheme();
+
   const styles = StyleSheet.create({
     container: {
       marginVertical: 10,
@@ -18,24 +21,28 @@ const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
     title: {
       position: "absolute",
       top: -10,
-      left: 5,
-      backgroundColor: "white",
-      paddingHorizontal: 5,
-      fontSize: 16,
+      left: 15,
+      backgroundColor: theme.background,
+      paddingHorizontal: 8,
+      fontSize: 14,
       fontFamily: "ComicBold",
       borderRadius: 15,
+      color: theme.subText,
     },
     inputText: {
-      backgroundColor: "white",
-      padding: 10,
-      borderRadius: 10,
-      fontSize: 18,
+      backgroundColor: theme.inputBg,
+      color: theme.text,
+      paddingHorizontal: 15,
+      paddingVertical: 12,
+      borderRadius: 12,
+      fontSize: 16,
       fontFamily: "ComicBold",
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
+      shadowColor: "#000",
+      shadowOpacity: isDarkMode ? 0.2 : 0.05,
+      shadowRadius: 3,
       shadowOffset: { width: 0, height: 2 },
       elevation: 2,
-      borderColor: props.value ? "green" : "red",
+      borderColor: props.value ? (isDarkMode ? "#80cbc4" : "green") : (isDarkMode ? "#e57373" : "red"),
       borderWidth: 1,
     },
   });
@@ -47,7 +54,8 @@ const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
         onChangeText={props.onChangeText}
         style={[styles.inputText, props.style]}
         keyboardType={props.keyboardType}
-        placeholderTextColor={"gray"}
+        placeholderTextColor={isDarkMode ? "#888888" : "gray"}
+        {...props}
       />
       {props.value && <Text style={styles.title}>{props.title}</Text>}
     </View>

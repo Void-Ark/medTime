@@ -1,10 +1,13 @@
-// app/_layout.tsx
-import { SplashScreen, Stack } from "expo-router";
+import { SplashScreen, Stack, useRouter } from "expo-router";
 import { useFonts } from "expo-font";
-import { useEffect } from "react";
-// import { overrideTextDefaultFont } from "../providers/FontProvider";
-import { overrideTextDefaultFont } from "../providers/fontProvider";
+import React, { useEffect } from "react";
+import { overrideTextDefaultFont } from "@/providers/fontProvider";
+import { ThemeProvider } from "@/providers/themeProvider";
+import * as Notifications from "expo-notifications";
+
 export default function Layout() {
+  const router = useRouter();
+  
   const [fontsLoaded] = useFonts({
     ComicRegular: require("../assets/fonts/ComicRelief-Regular.ttf"),
     ComicBold: require("../assets/fonts/ComicRelief-Bold.ttf"),
@@ -17,31 +20,43 @@ export default function Layout() {
     }
   }, [fontsLoaded]);
 
+  useEffect(() => {
+    // Listen for notification interactions (e.g. lockscreeen clicks)
+    let subscription: any;
+    try {
+      subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        if (data && data.medicineId) {
+          router.push("/calendar");
+        }
+      });
+    } catch (err) {
+      console.warn("Notifications listener could not be registered:", err);
+    }
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, []);
+
   if (!fontsLoaded) {
-    console.log("font not loaded");
     return null; // keep splash visible until fonts are ready
   }
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="auth" />
-      <Stack.Screen name="home" />
-      <Stack.Screen name="add" />
-    </Stack>
+    <ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="home" />
+        <Stack.Screen name="add" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="medications" />
+        <Stack.Screen name="calendar" />
+        <Stack.Screen name="history" />
+      </Stack>
+    </ThemeProvider>
   );
 }
-
-// // app/_layout.tsx
-// import { Tabs } from "expo-router";
-
-// export default function Layout() {
-//   return (
-//     <Tabs>
-//       <Tabs.Screen name="index" />
-//       <Tabs.Screen name="auth" />
-//       {/* <Tabs.Screen name="medicines" options={{ title: "Medicines" }} />
-//       <Tabs.Screen name="reminders" options={{ title: "Reminders" }} />
-//       <Tabs.Screen name="profile" options={{ title: "Profile" }} /> */}
-//     </Tabs>
-//   );
-// }

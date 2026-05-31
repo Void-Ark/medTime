@@ -11,11 +11,14 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as NavigationBar from "expo-navigation-bar";
+import { useAppTheme } from "@/providers/themeProvider";
 
 export default function SplashScreen() {
+  const { isDarkMode, theme } = useAppTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const router = useRouter();
+  
   useEffect(() => {
     if (Platform.OS === "android") {
       NavigationBar.setVisibilityAsync("hidden");
@@ -47,7 +50,10 @@ export default function SplashScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: "green" }]}
+      style={[
+        styles.container,
+        { backgroundColor: isDarkMode ? "#121212" : "#026e02" },
+      ]}
       edges={["bottom"]}
     >
       <StatusBar hidden={true} />
@@ -63,10 +69,11 @@ export default function SplashScreen() {
         <FontAwesome6
           name="house-medical-circle-check"
           size={100}
-          color="white"
+          color={isDarkMode ? "#ffffffff" : "#00ff04ff"}
         />
-        {/* <Ionicons name="medical" size={100} color="white" /> */}
-        <Text style={styles.appName}>MedTime</Text>
+        <Text style={[styles.appName, { color: isDarkMode ? "#ffffff" : "white" }]}>
+          MedTime
+        </Text>
       </Animated.View>
     </SafeAreaView>
   );
@@ -75,7 +82,6 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "green",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -84,8 +90,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     textAlign: "center",
-    color: "white",
-
     fontSize: 32,
+    marginTop: 10,
   },
 });

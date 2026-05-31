@@ -7,96 +7,44 @@ import {
   Text,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import * as LocalAuthentication from "expo-local-authentication";
 import Foundation from "@expo/vector-icons/Foundation";
 import { useRouter } from "expo-router";
+import { useBiometrics } from "@/hooks/useBiometrics";
+import { useAppTheme } from "@/providers/themeProvider";
 
 const Auth = () => {
-  // StatusBar.setHidden(true);
   const router = useRouter();
+  const { isDarkMode, theme } = useAppTheme();
   const { height, width } = Dimensions.get("window");
-  const [hasBiometrics, setHasBiometrics] = useState<boolean>(false);
-  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  // const [hasStoredPin, setHasStoredPin] = useState(false);
-  const [hasPin, setHasPin] = useState<boolean>(false); // Add this state
+  const {
+    hasBiometrics,
+    isAuthenticating,
+    authError,
+    authenticate,
+  } = useBiometrics();
 
-  useEffect(() => {
-    checkAuthentication();
-  }, []);
-
-  const checkAuthentication = async () => {
-    try {
-      // Check biometrics
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      setHasBiometrics(compatible && enrolled);
-
-      // Check for PIN (you should implement your PIN check logic here)
-      // For demo, let's assume PIN exists if it's stored in secure storage
-      const hasStoredPin = false; // Replace with your PIN check logic
-      setHasPin(hasStoredPin);
-
-      // If neither biometrics nor PIN is available, go to home
-      // console.log(compatible, enrolled, hasPin);
-      if (!hasBiometrics && !hasPin) {
-        console.log("No authentication methods available");
-        router.replace("/home");
-      }
-    } catch (error) {
-      console.error("Error checking authentication:", error);
-      // On error, navigate to home as fallback
+  const handleAuthentication = () => {
+    authenticate(() => {
       router.replace("/home");
-    }
-  };
-
-  const handleAuthentication = async () => {
-    try {
-      setIsAuthenticating(true);
-      setError(null);
-
-      if (hasBiometrics) {
-        const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: "Authenticate to access MedTime",
-          fallbackLabel: "Use PIN",
-        });
-
-        if (result.success) {
-          router.replace("/home");
-        } else {
-          setError("Authentication failed. Please try again.");
-        }
-      } else if (hasPin) {
-        // Show PIN input
-        console.log("Show PIN input");
-      } else {
-        // No authentication method available
-        router.replace("/home");
-      }
-    } catch (err) {
-      setError("Authentication error. Please try again.");
-      console.error(err);
-    } finally {
-      setIsAuthenticating(false);
-    }
+    });
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? "#121212" : "#86f386" }]} edges={["top"]}>
       <StatusBar barStyle="light-content" />
       <LinearGradient
-        colors={["#86f386", "#014901"]}
+        colors={isDarkMode ? ["#37474f", "#121212"] : ["#86f386", "#014901"]}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        <Text>
+        <Text style={{ fontFamily: "ComicRegular", color: "white", opacity: 0.6 }}>
           Height: {height} | Width: {width}.
         </Text>
         <View style={styles.iconWrapper}>
@@ -107,7 +55,6 @@ const Auth = () => {
           />
         </View>
         <Text style={styles.heading}>MedTime</Text>
-        {/* <Text style={styles.statement}>Hey! It's medicines time.</Text> */}
 
         <View style={styles.box}>
           <Text style={styles.welcome}>Welcome Back!</Text>
@@ -144,10 +91,10 @@ const Auth = () => {
             )}
           </Pressable>
 
-          {error && (
+          {authError && (
             <View style={styles.errorContainer}>
               <Foundation name="alert" size={24} color="red" />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{authError}</Text>
             </View>
           )}
         </View>
@@ -182,12 +129,8 @@ const styles = StyleSheet.create({
   heading: {
     color: "white",
     fontSize: 45,
+    fontFamily: "ComicBold",
   },
-  // statement: {
-  //   color: "white",
-  //
-  //   fontSize: 22,
-  // },
   box: {
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     borderRadius: 20,
@@ -199,7 +142,7 @@ const styles = StyleSheet.create({
   welcome: {
     fontSize: 28,
     color: "white",
-
+    fontFamily: "ComicBold",
     marginBottom: 10,
   },
   text: {
@@ -208,6 +151,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
     opacity: 0.8,
+    fontFamily: "ComicRegular",
   },
   pressable: {
     backgroundColor: "rgba(255, 255, 255, 0.3)",
@@ -222,7 +166,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: "ComicBold",
   },
   pressablePressed: {
     opacity: 0.8,
@@ -240,5 +184,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#FF6B6B",
     fontSize: 14,
+    fontFamily: "ComicRegular",
   },
 });

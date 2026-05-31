@@ -44,7 +44,7 @@ export const QuickActionBox: React.FC<QuickActionBoxProps> = ({
     <Pressable
       onPress={() => {
         console.log("Pressed:", label);
-        router.push(route);
+        router.push(route as any);
       }}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -61,7 +61,7 @@ export const QuickActionBox: React.FC<QuickActionBoxProps> = ({
           }}
         >
           {icons[icon as keyof typeof icons]}
-          <Text style={{ color: color, fontSize: 16 }}>{label}</Text>
+          <Text style={{ color: color, fontSize: 16, fontFamily: "ComicBold" }}>{label}</Text>
         </LinearGradient>
       </Animated.View>
     </Pressable>
@@ -100,4 +100,21 @@ const icons = {
   refill_tracker: (
     <Ionicons name="bag-check" size={24} color="white" style={styles.icon} />
   ),
+  medications: (
+    <MaterialIcons
+      name="medical-services"
+      size={24}
+      color="white"
+      style={styles.icon}
+    />
+  ),
+  settings: (
+    <MaterialIcons
+      name="settings"
+      size={24}
+      color="white"
+      style={styles.icon}
+    />
+  ),
 };
+export default QuickActionBox;

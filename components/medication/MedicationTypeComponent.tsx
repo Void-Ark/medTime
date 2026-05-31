@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 import React, { Dispatch, FC, SetStateAction } from "react";
-import { MedicineType } from "../storage/medicines";
-import DropdownPickerBox from "./dropdownPickerBox";
+import { MedicineType } from "@/schemas";
+import DropdownPickerBox from "@/components/ui/DropdownPickerBox";
+import { useAppTheme } from "@/providers/themeProvider";
 
 export interface MedicationTypeProps {
-  // Add props here
   type: MedicineType;
   setType: Dispatch<SetStateAction<MedicineType>>;
   pattern: number[] | null;
@@ -26,10 +26,10 @@ const MedicationTypeComponent: FC<MedicationTypeProps> = ({
   pattern,
   setPattern,
 }) => {
+  const { theme } = useAppTheme();
   return (
     <View>
-      <Text style={{ fontSize: 18 }}>Medication Type: </Text>
-      {/* <TypePicker value={type} setValue={setType} options={typesList} /> */}
+      <Text style={{ fontSize: 16, fontFamily: "ComicBold", color: theme.text, marginTop: 10 }}>Medication Type:</Text>
       <DropdownPickerBox<MedicineType>
         value={type}
         setValue={setType}

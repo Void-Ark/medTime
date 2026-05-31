@@ -1,111 +1,203 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Medicine, MedicineType, MedicinePatternType, IntakeLog } from "../schemas";
+import { addHistoryEntry } from "./history";
+import {
+  scheduleMedicationNotifications,
+  cancelScheduledNotifications,
+} from "../services/notificationService";
 
-// Type defining the schedule pattern of the medicine
-export type MedicineType =
-  | "pill" // Pill form
-  | "liquid" // Liquid form
-  | "injection" // Injection form
-  | "ointment" // Ointment form
-  | "supplement" // Supplement form
-  | "other"; // Other form
-
-export type MedicinePatternType =
-  | "daily" // taken every day
-  | "weekly" // taken specific days of the week
-  | "monthly" // taken specific day(s) of the month
-  | "asNeeded" // taken as needed (PRN)
-  | "yearly" // taken once a year
-  | "custom"; // custom schedule not covered by other types
-
-// export type MedicineType = "pill" | "liquid" | "injection" | "ointment" | "supplement";
-
-export interface Medicine {
-  id: string; // Unique identifier for the medicine
-  name: string; // Name of the medicine
-
-  dosage: string; // Dosage info, e.g., "1 tablet" or "5ml"
-  frequency: number; // Times per day the medicine should be taken
-  timings: Date[]; // Specific times to take medicine (can use getTimeAsDate helper)
-
-  startDate: Date; // When the medicine schedule starts
-  endDate?: Date; // Optional end date for the medicine
-  stockCount: number; // How many doses/units are currently available
-  taken: boolean; // Whether the user has marked this medicine as taken today
-  reminder: boolean; // Whether reminders/notifications are enabled for this medicine
-  missedTimes?: Date[]; // List of times the user missed taking the medicine (optional)
-  notes?: string; // Any extra notes about the medicine (optional)
-
-  type: MedicineType; // Type of schedule: daily, weekly, monthly, asNeeded, custom
-  pattern?: number[] | null;
-  /* Optional schedule pattern:
-     - weekly: [1,3,5] = Mon, Wed, Fri
-     - monthly: [1,15] = 1st, 15th
-     - custom: any pattern or descriptive string
-  */
-
-  category?: string; // Category of medicine (e.g., "Vitamin", "Painkiller") for filtering
-  imageUrl?: string; // Optional image URL of the medicine/tablet
-  lastTaken?: Date; // Last time the user marked the medicine as taken
-  nextDose?: Date; // Calculated next dose time (can be derived from type + pattern + lastTaken)
-  reminderSound?: string; // Optional custom sound for notifications
-  isArchived?: boolean; // Marks the medicine as inactive or archived without deleting
-  refillThreshold?: number; // Minimum stock before reminding user to refill
-  createdAt?: Date; // When this medicine was added to the app
-  updatedAt?: Date; // Last time this medicine record was updated
-}
+// Re-export types for backward compatibility
+export { Medicine, MedicineType, MedicinePatternType };
 
 const KEY = "medicines";
 
 export async function addMedicine(newMedicine: Medicine): Promise<boolean> {
   try {
+    // Schedule push notification triggers for the new medicine
+    const { triggerIds, nextDose } = await scheduleMedicationNotifications(newMedicine);
+    const medWithTriggers = { 
+      ...newMedicine, 
+      notificationTriggerIds: triggerIds,
+      nextDose: nextDose || undefined,
+    };
+
     const storedMedicines = await AsyncStorage.getItem(KEY);
-    const storedMedicinesJSON = storedMedicines
+    const storedMedicinesJSON: Medicine[] = storedMedicines
       ? JSON.parse(storedMedicines)
       : [];
-    storedMedicinesJSON.push(newMedicine);
+    storedMedicinesJSON.push(medWithTriggers);
     await AsyncStorage.setItem(KEY, JSON.stringify(storedMedicinesJSON));
+    return true;
   } catch (error) {
-    console.error("Error retrieving data", error);
+    console.error("Error adding medicine", error);
     return false;
   }
-  return true;
 }
 
 export async function getMedicines(): Promise<Medicine[]> {
   try {
     const storedMedicines = await AsyncStorage.getItem(KEY);
-    const storedMedicinesJSON = storedMedicines
+    let storedMedicinesJSON: Medicine[] = storedMedicines
       ? JSON.parse(storedMedicines)
       : [];
+
+    // Background sync: automatically reschedule expired notifications / missing nextDose
+    const now = new Date();
+    let needsSave = false;
+
+    for (let i = 0; i < storedMedicinesJSON.length; i++) {
+      const med = storedMedicinesJSON[i];
+      if (med.reminder) {
+        let isExpired = false;
+        if (med.nextDose) {
+          const nextDoseDate = new Date(med.nextDose);
+          const windowEnd = new Date(nextDoseDate.getTime() + 60 * 60 * 1000);
+          isExpired = now > windowEnd;
+        }
+
+        if (!med.nextDose || isExpired) {
+          // Expired or missing nextDose: cancel old triggers and schedule next window
+          if (med.notificationTriggerIds) {
+            await cancelScheduledNotifications(med.notificationTriggerIds);
+          }
+          const { triggerIds, nextDose } = await scheduleMedicationNotifications(med);
+          storedMedicinesJSON[i] = {
+            ...med,
+            notificationTriggerIds: triggerIds,
+            nextDose: nextDose || undefined,
+          };
+          needsSave = true;
+        }
+      }
+    }
+
+    if (needsSave) {
+      await AsyncStorage.setItem(KEY, JSON.stringify(storedMedicinesJSON));
+    }
+
     return storedMedicinesJSON;
   } catch (error) {
-    console.error("Error retrieving data", error);
+    console.error("Error retrieving medicines", error);
     return [];
   }
 }
 
-export async function removeMedicine(id: number): Promise<boolean> {
+export async function removeMedicine(id: string): Promise<boolean> {
   try {
     const storedMedicines = await AsyncStorage.getItem(KEY);
-    const storedMedicinesJSON = storedMedicines
+    const storedMedicinesJSON: Medicine[] = storedMedicines
       ? JSON.parse(storedMedicines)
       : [];
+
+    // Cancel all scheduled notifications for the deleted medicine
+    const existing = storedMedicinesJSON.find((m) => m.id === id);
+    if (existing && existing.notificationTriggerIds) {
+      await cancelScheduledNotifications(existing.notificationTriggerIds);
+    }
+
     const newMedicines = storedMedicinesJSON.filter(
-      (medicine: Medicine) => medicine.id !== id.toString()
+      (medicine: Medicine) => medicine.id !== id
     );
     await AsyncStorage.setItem(KEY, JSON.stringify(newMedicines));
+    return true;
   } catch (error) {
-    console.error("Error retrieving data", error);
+    console.error("Error removing medicine", error);
     return false;
   }
-  return true;
 }
 
-export async function markAsTaken(id: string) {
-  const stored = await AsyncStorage.getItem(KEY);
-  let medicines: Medicine[] = stored ? JSON.parse(stored) : [];
+export async function markAsTaken(id: string): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(KEY);
+    let medicines: Medicine[] = stored ? JSON.parse(stored) : [];
 
-  medicines = medicines.map((m) => (m.id === id ? { ...m, taken: true } : m));
+    let medicineToMark: Medicine | undefined;
 
-  await AsyncStorage.setItem(KEY, JSON.stringify(medicines));
+    medicines = medicines.map((m) => {
+      if (m.id === id) {
+        medicineToMark = m;
+        const newStock = m.stockCount > 0 ? m.stockCount - 1 : 0;
+        return {
+          ...m,
+          taken: true,
+          stockCount: newStock,
+          lastTaken: new Date(),
+        };
+      }
+      return m;
+    });
+
+    if (medicineToMark) {
+      // 1. Cancel previous notifications for this active window
+      if (medicineToMark.notificationTriggerIds) {
+        await cancelScheduledNotifications(medicineToMark.notificationTriggerIds);
+      }
+
+      // 2. Schedule push notifications for the *next* chronological timings window
+      const { triggerIds: newTriggerIds, nextDose: newNextDose } = await scheduleMedicationNotifications(medicineToMark);
+
+      // Save the new trigger IDs and nextDose back to our array
+      medicines = medicines.map((m) => {
+        if (m.id === id) {
+          return {
+            ...m,
+            notificationTriggerIds: newTriggerIds,
+            nextDose: newNextDose || undefined,
+          };
+        }
+        return m;
+      });
+    }
+
+    await AsyncStorage.setItem(KEY, JSON.stringify(medicines));
+
+    // If medicine was found, append to intake history logs
+    if (medicineToMark) {
+      const log: IntakeLog = {
+        id: Math.random().toString(36).substring(7),
+        medicineId: id,
+        medicineName: medicineToMark.name,
+        dosage: medicineToMark.dosage,
+        takenAt: new Date(),
+        status: "taken",
+      };
+      await addHistoryEntry(log);
+    }
+    return true;
+  } catch (error) {
+    console.error("Error marking medicine as taken:", error);
+    return false;
+  }
+}
+
+export async function updateMedicine(updatedMed: Medicine): Promise<boolean> {
+  try {
+    const storedMedicines = await AsyncStorage.getItem(KEY);
+    let storedMedicinesJSON: Medicine[] = storedMedicines
+      ? JSON.parse(storedMedicines)
+      : [];
+
+    // Cancel old alarms before scheduling new ones
+    const existing = storedMedicinesJSON.find((m) => m.id === updatedMed.id);
+    if (existing && existing.notificationTriggerIds) {
+      await cancelScheduledNotifications(existing.notificationTriggerIds);
+    }
+
+    // Schedule new alarms and get fresh trigger IDs and nextDose
+    const { triggerIds: newTriggerIds, nextDose: newNextDose } = await scheduleMedicationNotifications(updatedMed);
+    const medWithNewTriggers = { 
+      ...updatedMed, 
+      notificationTriggerIds: newTriggerIds,
+      nextDose: newNextDose || undefined,
+    };
+
+    storedMedicinesJSON = storedMedicinesJSON.map((m) =>
+      m.id === updatedMed.id ? medWithNewTriggers : m
+    );
+    await AsyncStorage.setItem(KEY, JSON.stringify(storedMedicinesJSON));
+    return true;
+  } catch (error) {
+    console.error("Error updating medicine", error);
+    return false;
+  }
 }

@@ -8,7 +8,7 @@ interface CircularProgressProps {
   completedDoses: number;
 }
 
-const { height, width } = Dimensions.get("screen");
+const { width } = Dimensions.get("screen");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function CircularProgress({
@@ -29,7 +29,7 @@ export default function CircularProgress({
 
   useEffect(() => {
     Animated.timing(animationValue, {
-      toValue: progress / 100,
+      toValue: validatedProgress / 100,
       duration: 2000,
       useNativeDriver: true,
     }).start();
@@ -44,9 +44,7 @@ export default function CircularProgress({
       style={{
         alignItems: "center",
         justifyContent: "center",
-        // backgroundColor: "red",
         paddingBottom: 40,
-        // paddingTop: 20,
       }}
     >
       <View style={{ position: "relative" }}>

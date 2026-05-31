@@ -12,7 +12,14 @@
     "allowJs": false, // ❌ disallow .js files
     "checkJs": false, // ❌ don’t type-check .js files
     "jsx": "react-native", // ✅ ensure .tsx is parsed correctly
-    "module": "ESNext" // ✅ avoids "preserve" warning
+    "module": "ESNext", // ✅ avoids "preserve" warning
+    "moduleResolution": "bundler", // ✅ resolves packages from node_modules and supports customConditions
+    "allowSyntheticDefaultImports": true, // ✅ allows import React from "react" without * as
+    "esModuleInterop": true, // ✅ enables compatible default imports
+    "baseUrl": ".", // ✅ base directory to resolve non-relative module names
+    "paths": {
+      "@/*": ["*"] // ✅ configure @/* alias paths to absolute locations
+    }
   },
   "include": ["**/*.ts", "**/*.tsx", "continue/rules"], // ✅ only include TS/TSX files
   "exclude": ["node_modules"] // ✅ exclude node_modules
