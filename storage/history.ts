@@ -1,18 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { IntakeLog } from "../schemas";
-
-const HISTORY_KEY = "history_logs";
+import { db, mapRowToIntakeLog } from "./db";
 
 export async function getHistory(): Promise<IntakeLog[]> {
   try {
-    const stored = await AsyncStorage.getItem(HISTORY_KEY);
-    const parsed: IntakeLog[] = stored ? JSON.parse(stored) : [];
-    // Sort in reverse chronological order (newest first)
-    return parsed.sort((a, b) => {
-      const timeA = new Date(a.takenAt).getTime();
-      const timeB = new Date(b.takenAt).getTime();
-      return timeB - timeA;
-    });
+    const rows = await db.getAllAsync("SELECT * FROM history_logs ORDER BY takenAt DESC;");
+    return rows.map(mapRowToIntakeLog);
   } catch (error) {
     console.error("Error fetching history:", error);
     return [];
@@ -21,9 +13,18 @@ export async function getHistory(): Promise<IntakeLog[]> {
 
 export async function addHistoryEntry(log: IntakeLog): Promise<boolean> {
   try {
-    const history = await getHistory();
-    history.unshift(log); // Prepend to history logs
-    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    await db.runAsync(`
+      INSERT OR REPLACE INTO history_logs (id, medicineId, medicineName, dosage, takenAt, status, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?);
+    `, [
+      log.id,
+      log.medicineId,
+      log.medicineName,
+      log.dosage,
+      typeof log.takenAt === 'string' ? log.takenAt : log.takenAt.toISOString(),
+      log.status,
+      log.notes || null
+    ]);
     return true;
   } catch (error) {
     console.error("Error adding history entry:", error);
@@ -33,7 +34,7 @@ export async function addHistoryEntry(log: IntakeLog): Promise<boolean> {
 
 export async function clearHistory(): Promise<boolean> {
   try {
-    await AsyncStorage.removeItem(HISTORY_KEY);
+    await db.runAsync("DELETE FROM history_logs;");
     return true;
   } catch (error) {
     console.error("Error clearing history:", error);

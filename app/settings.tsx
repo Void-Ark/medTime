@@ -21,13 +21,15 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
+import { exportBackupData, importBackupData } from "@/storage/db";
 
 const Settings = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const statusBarHeight =
     Platform.OS === "android"
       ? StatusBar.currentHeight
-      : useSafeAreaInsets().top;
+      : insets.top;
 
   const { isDarkMode, toggleTheme, theme } = useAppTheme();
 
@@ -62,12 +64,12 @@ const Settings = () => {
   // Export medicines & history database
   const handleExport = async () => {
     try {
-      const medicines = await AsyncStorage.getItem("medicines");
-      const history = await AsyncStorage.getItem("history_logs");
+      const { medicines, history, images } = await exportBackupData();
 
       const backupObj = {
-        medicines: medicines ? JSON.parse(medicines) : [],
-        history: history ? JSON.parse(history) : [],
+        medicines,
+        history,
+        images,
         exportedAt: new Date().toISOString(),
         version: "1.0",
       };
@@ -114,10 +116,7 @@ const Settings = () => {
             style: "destructive",
             onPress: async () => {
               try {
-                await AsyncStorage.setItem("medicines", JSON.stringify(parsed.medicines));
-                if (parsed.history) {
-                  await AsyncStorage.setItem("history_logs", JSON.stringify(parsed.history));
-                }
+                await importBackupData(parsed);
                 setImportModalVisible(false);
                 setPastedBackup("");
                 Alert.alert("Success", "Medication database successfully restored!");
@@ -143,7 +142,11 @@ const Settings = () => {
       <LinearGradient colors={isDarkMode ? ["#37474f", "#212121"] : ["#67fc67", "#026e02"]}>
         <View style={{ width: "100%", height: statusBarHeight }}></View>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
             <Entypo name="chevron-left" size={32} color="#ffffff" />
           </Pressable>
           <Text style={styles.headerTitle}>Settings Panel</Text>
@@ -287,6 +290,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 15,
     paddingVertical: 15,
+  },
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
     color: "white",

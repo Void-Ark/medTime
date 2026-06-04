@@ -32,10 +32,11 @@ export interface MedInstance {
 
 const Calendar = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const statusBarHeight =
     Platform.OS === "android"
       ? StatusBar.currentHeight
-      : useSafeAreaInsets().top;
+      : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
 
@@ -64,6 +65,7 @@ const Calendar = () => {
   useEffect(() => {
     // 1. Filter active medicines for the selected date
     const dayFiltered = medicines.filter((med) => {
+      if (med.isArchived) return false;
       const medStartDate = new Date(med.startDate);
       const dateZeroTime = new Date(
         selectedDate.getFullYear(),
@@ -193,12 +195,15 @@ const Calendar = () => {
 
   // Generate 7 days of the week around today
   const getWeekDays = () => {
-    const current = new Date();
+    const today = new Date();
     const week = [];
-    const start = new Date(current.setDate(current.getDate() - current.getDay()));
+    // Find Sunday of current week
+    const startOfWeek = new Date(today);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(today.getDate() - today.getDay());
     for (let i = 0; i < 7; i++) {
-      const day = new Date(start);
-      day.setDate(start.getDate() + i);
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
       week.push(day);
     }
     return week;

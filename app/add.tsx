@@ -21,17 +21,19 @@ import PhotoPickerSection from "@/components/medication/add/PhotoPickerSection";
 import SchedulePatternSection from "@/components/medication/add/SchedulePatternSection";
 import DurationSection from "@/components/medication/add/DurationSection";
 import { useAppTheme } from "@/providers/themeProvider";
+import { saveImageToAppStorage, deleteImageFromAppStorage } from "@/utils/imageStorage";
 
 const MedicationAdd = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditMode = !!id;
   const { theme, isDarkMode } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   const statusBarHeight =
     Platform.OS === "android"
       ? StatusBar.currentHeight
-      : useSafeAreaInsets().top;
+      : insets.top;
 
   const { addMed, updateMed, medicines } = useMedicines();
 
@@ -89,7 +91,7 @@ const MedicationAdd = () => {
     if (timings.length !== frequency) {
       !frequency || frequency === 0
         ? setTimings([new Date(Date.now())])
-        : setTimings(new Array(frequency).fill(new Date()));
+        : setTimings(Array.from({ length: frequency }, () => new Date()));
     }
   }, [frequency, isLoaded]);
 
@@ -127,8 +129,27 @@ const MedicationAdd = () => {
       return;
     }
 
+    const medId = isEditMode && id ? id : `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // Save image to permanent app storage if picked/exists
+    let finalImageUrl: string | undefined = undefined;
+    if (imageUri) {
+      const savedUri = await saveImageToAppStorage(imageUri, medId);
+      if (savedUri) {
+        finalImageUrl = savedUri;
+      }
+    } else {
+      // User explicitly cleared the image, delete the old file if in edit mode
+      if (isEditMode && id) {
+        const existing = medicines.find((m) => m.id === id);
+        if (existing && existing.imageUrl) {
+          await deleteImageFromAppStorage(existing.imageUrl);
+        }
+      }
+    }
+
     const savedMed: Medicine = {
-      id: isEditMode && id ? id : Math.random().toString(36).substring(7),
+      id: medId,
       name: name.trim(),
       dosage: dosage.trim(),
       frequency,
@@ -141,7 +162,7 @@ const MedicationAdd = () => {
       type: MedType,
       patternType,
       pattern,
-      imageUrl: imageUri || undefined,
+      imageUrl: finalImageUrl,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

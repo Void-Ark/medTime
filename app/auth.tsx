@@ -44,9 +44,6 @@ const Auth = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        <Text style={{ fontFamily: "ComicRegular", color: "white", opacity: 0.6 }}>
-          Height: {height} | Width: {width}.
-        </Text>
         <View style={styles.iconWrapper}>
           <FontAwesome6
             name="house-medical-circle-check"

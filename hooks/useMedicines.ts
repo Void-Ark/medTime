@@ -6,6 +6,8 @@ import {
   removeMedicine,
   markAsTaken,
   updateMedicine,
+  refillMedicineStock,
+  updateMedicineStock,
 } from "@/storage/medicines";
 
 export function useMedicines() {
@@ -80,6 +82,33 @@ export function useMedicines() {
     }
   };
 
+  const refillMed = async (id: string, refillAmount: number): Promise<boolean> => {
+    try {
+      const success = await refillMedicineStock(id, refillAmount);
+      if (success) {
+        await fetchMedicines();
+      }
+      return success;
+    } catch (err) {
+      console.error("useMedicines refillMed error:", err);
+      return false;
+    }
+  };
+
+  const updateStock = async (id: string, newStock: number): Promise<boolean> => {
+    try {
+      const success = await updateMedicineStock(id, newStock);
+      if (success) {
+        await fetchMedicines();
+      }
+      return success;
+    } catch (err) {
+      console.error("useMedicines updateStock error:", err);
+      return false;
+    }
+  };
+
+
   return {
     medicines,
     isLoading,
@@ -87,6 +116,8 @@ export function useMedicines() {
     removeMed,
     takeMed,
     updateMed,
+    refillMed,
+    updateStock,
     refresh: fetchMedicines,
   };
 }

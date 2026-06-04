@@ -9,7 +9,7 @@ import {
   Image,
   Alert,
 } from "react-native";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useMedicines } from "@/hooks/useMedicines";
 import { Medicine } from "@/schemas";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,20 +18,34 @@ import Entypo from "@expo/vector-icons/Entypo";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
+import { getHistory } from "@/storage/history";
+import { isMedicineScheduleEnded } from "@/utils/medicineUtils";
 
 const Medications = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const statusBarHeight =
     Platform.OS === "android"
       ? StatusBar.currentHeight
-      : useSafeAreaInsets().top;
+      : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
   const { medicines, removeMed, refresh } = useMedicines();
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+
+  const loadAllData = async () => {
+    try {
+      await refresh();
+      const logs = await getHistory();
+      setHistoryLogs(logs);
+    } catch (err) {
+      console.error("Error loading medications list history:", err);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
+      loadAllData();
     }, [])
   );
 
@@ -76,11 +90,17 @@ const Medications = () => {
   };
 
   const renderMedItem = ({ item }: { item: Medicine }) => {
+    const isEnded = isMedicineScheduleEnded(item, historyLogs);
     return (
-      <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
+      <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: isEnded ? (isDarkMode ? "#37474f" : "#ddd") : theme.cardBorder, borderWidth: isDarkMode ? 1 : (isEnded ? 1 : 0), opacity: isEnded ? 0.7 : 1.0 }]}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* Medication Icon or Picture */}
           <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f1fdf1" }]}>
+            {isEnded && (
+              <View style={styles.endedOverlay}>
+                <FontAwesome6 name="circle-check" size={14} color="white" />
+              </View>
+            )}
             {item.imageUrl ? (
               <Image source={{ uri: item.imageUrl }} style={styles.medImage} />
             ) : (
@@ -102,9 +122,16 @@ const Medications = () => {
 
           {/* Details */}
           <View style={styles.medInfo}>
-            <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1}>
-              {item.name}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {isEnded && (
+                <View style={[styles.endedBadge, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f5f5f5", borderColor: isDarkMode ? "#455a64" : "#bbb" }]}>
+                  <Text style={[styles.endedBadgeText, { color: isDarkMode ? "#90a4ae" : "#777" }]}>Ended</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.medDetails, { color: theme.subText }]}>
               {item.dosage} • {item.frequency}x daily
             </Text>
@@ -160,13 +187,21 @@ const Medications = () => {
     );
   };
 
+  // Show ALL medicines in management view (including ended ones) so user can edit/delete them.
+  // Only truly archived medicines are hidden since they are intentionally soft-deleted.
+  const visibleMedicines = medicines.filter((m) => !m.isArchived);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar translucent backgroundColor="transparent" barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <LinearGradient colors={isDarkMode ? ["#37474f", "#212121"] : ["#67fc67", "#026e02"]}>
         <View style={{ width: "100%", height: statusBarHeight }}></View>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
             <Entypo name="chevron-left" size={32} color="#ffffff" />
           </Pressable>
           <Text style={styles.headerTitle}>My Medications</Text>
@@ -177,9 +212,9 @@ const Medications = () => {
       </LinearGradient>
 
       {/* List Body */}
-      {medicines.length > 0 ? (
+      {visibleMedicines.length > 0 ? (
         <FlatList
-          data={medicines}
+          data={visibleMedicines}
           keyExtractor={(item: Medicine) => item.id}
           renderItem={renderMedItem}
           contentContainerStyle={styles.listContent}
@@ -212,6 +247,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 15,
     paddingVertical: 15,
+  },
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
     color: "white",
@@ -276,6 +314,25 @@ const styles = StyleSheet.create({
   },
   stockText: {
     fontSize: 12,
+    fontFamily: "ComicBold",
+  },
+  endedOverlay: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#546e7a",
+    borderRadius: 7,
+    padding: 2,
+    zIndex: 1,
+  },
+  endedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  endedBadgeText: {
+    fontSize: 10,
     fontFamily: "ComicBold",
   },
   actionsContainer: {

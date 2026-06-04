@@ -9,6 +9,8 @@ import {
   View,
   Modal,
   Pressable,
+  Image,
+  Alert,
 } from "react-native";
 import React, { useCallback, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,20 +26,25 @@ import { useFocusEffect } from "expo-router";
 import { getHistory } from "@/storage/history";
 import { MedInstance } from "./calendar";
 import { useAppTheme } from "@/providers/themeProvider";
+import { isMedicineScheduleEnded } from "@/utils/medicineUtils";
 
 const Home = () => {
+  const insets = useSafeAreaInsets();
   const statusBarHeight =
     Platform.OS === "android"
       ? StatusBar.currentHeight
-      : useSafeAreaInsets().top;
+      : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
 
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; type: "missed" | "low_stock"; time?: Date }>>([]);
-  const { medicines, refresh } = useMedicines();
+  const { medicines, takeMed, refresh } = useMedicines();
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [todayMeds, setTodayMeds] = useState<MedInstance[]>([]);
+  const [selectedMedInstance, setSelectedMedInstance] = useState<MedInstance | null>(null);
+  const [isPhotoModalVisible, setIsPhotoModalVisible] = useState(false);
+  const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
 
   // Focus synchronization
   const loadAllData = async () => {
@@ -47,6 +54,16 @@ const Home = () => {
       setHistoryLogs(logs);
     } catch (err) {
       console.error("Error loading home data:", err);
+    }
+  };
+
+  const handleTakeMedication = async (medInstance: MedInstance) => {
+    const success = await takeMed(medInstance.medicine.id);
+    if (success) {
+      await loadAllData();
+      setIsPhotoModalVisible(false);
+    } else {
+      Alert.alert("Error", "Failed to mark medication as taken.");
     }
   };
 
@@ -67,6 +84,7 @@ const Home = () => {
 
     // 1. Filter active medicines for today
     const dayFiltered = medicines.filter((m) => {
+      if (m.isArchived) return false;
       const medStartDate = new Date(m.startDate);
       const startZeroTime = new Date(
         medStartDate.getFullYear(),
@@ -184,9 +202,12 @@ const Home = () => {
       }
     });
 
-    // 2. Check for low stock on all medicines (5 doses or less)
+    // 2. Check for low stock on all active medicines
     medicines.forEach((med) => {
-      if (med.stockCount <= 5) {
+      if (isMedicineScheduleEnded(med, historyLogs)) return;
+
+      const threshold = med.refillThreshold !== undefined ? med.refillThreshold : 5;
+      if (med.stockCount <= threshold) {
         list.push({
           id: `stock-${med.id}`,
           title: "Low Stock Warning",
@@ -197,7 +218,7 @@ const Home = () => {
     });
 
     setNotifications(list);
-  }, [todayMeds, medicines]);
+  }, [todayMeds, medicines, historyLogs]);
 
   // Compute progress statistics dynamically
   const totalDoses = todayMeds.length;
@@ -253,7 +274,19 @@ const Home = () => {
         </View>
         {todayMeds.length > 0 ? (
           todayMeds.map((inst) => (
-            <View key={inst.instanceId}>
+            <Pressable
+              key={inst.instanceId}
+              onPress={() => {
+                setSelectedMedInstance(inst);
+                setIsPhotoModalVisible(true);
+              }}
+              style={({ pressed }) => [
+                {
+                  opacity: pressed ? 0.85 : 1.0,
+                  transform: [{ scale: pressed ? 0.98 : 1.0 }]
+                }
+              ]}
+            >
               <MedCard
                 medicine_name={inst.medicine.name}
                 quantity={inst.medicine.dosage}
@@ -262,7 +295,7 @@ const Home = () => {
                 imageUrl={inst.medicine.imageUrl}
                 statusText={inst.statusText}
               />
-            </View>
+            </Pressable>
           ))
         ) : (
           <View style={{ alignItems: "center", marginTop: 25 }}>
@@ -366,6 +399,191 @@ const Home = () => {
                 <Text style={styles.modalCloseText}>Close</Text>
               </LinearGradient>
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Medication Photo Details Modal */}
+      <Modal
+        visible={isPhotoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsPhotoModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? "#37474f" : "#eee" }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Medication Details</Text>
+              <Pressable style={styles.closeIconButton} onPress={() => setIsPhotoModalVisible(false)}>
+                <MaterialIcons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            {selectedMedInstance && (
+              <View style={styles.photoModalBody}>
+                 {/* Photo container */}
+                 {selectedMedInstance.medicine.imageUrl ? (
+                   <Pressable
+                     onPress={() => setIsZoomModalVisible(true)}
+                     style={({ pressed }) => [
+                       styles.modalImageContainer,
+                       { borderColor: theme.border, backgroundColor: isDarkMode ? "#2e2e2e" : "#fcfcfc", opacity: pressed ? 0.92 : 1.0 },
+                     ]}
+                   >
+                     <Image
+                       source={{ uri: selectedMedInstance.medicine.imageUrl }}
+                       style={styles.modalImage}
+                     />
+                     <View style={styles.zoomIconIndicator}>
+                       <MaterialIcons name="zoom-in" size={20} color="white" />
+                     </View>
+                   </Pressable>
+                 ) : (
+                   <View style={[styles.modalImageContainer, { borderColor: theme.border, backgroundColor: isDarkMode ? "#2e2e2e" : "#fcfcfc", alignItems: "center", justifyContent: "center" }]}>
+                     <FontAwesome6
+                       name={
+                         selectedMedInstance.medicine.type === "pill"
+                           ? "pills"
+                           : selectedMedInstance.medicine.type === "liquid"
+                           ? "bottle-water"
+                           : selectedMedInstance.medicine.type === "injection"
+                           ? "syringe"
+                           : "prescription-bottle"
+                       }
+                       size={60}
+                       color={isDarkMode ? "#80cbc4" : "#026e02"}
+                     />
+                   </View>
+                 )}
+
+                {/* Details Section */}
+                <Text style={[styles.modalMedName, { color: theme.text }]}>
+                  {selectedMedInstance.medicine.name}
+                </Text>
+
+                <Text style={[styles.modalMedDosage, { color: theme.subText }]}>
+                  Dosage: {selectedMedInstance.medicine.dosage}
+                </Text>
+
+                {/* Intake Status Badge */}
+                <View style={styles.statusBadgeRow}>
+                  {selectedMedInstance.isTaken ? (
+                    <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? "#152e1f" : "#e8f5e9", borderColor: isDarkMode ? "#1e5e3a" : "#c8e6c9" }]}>
+                      <MaterialIcons name="check-circle" size={18} color={isDarkMode ? "#81c784" : "#2e7d32"} />
+                      <Text style={[styles.statusBadgeText, { color: isDarkMode ? "#81c784" : "#2e7d32" }]}>
+                        Taken
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor: selectedMedInstance.statusText === "Missed" 
+                          ? (isDarkMode ? "#2d1a1a" : "#ffebee") 
+                          : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#132535" : "#e3f2fd") : (isDarkMode ? "#2e2e2e" : "#f5f5f5")),
+                        borderColor: selectedMedInstance.statusText === "Missed" 
+                          ? (isDarkMode ? "#822727" : "#ffcdd2") 
+                          : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#1d4f7c" : "#90caf9") : (isDarkMode ? "#444" : "#e0e0e0"))
+                      }
+                    ]}>
+                      <MaterialIcons 
+                        name={selectedMedInstance.statusText === "Missed" ? "error" : (selectedMedInstance.statusText === "Take" ? "play-arrow" : "lock")} 
+                        size={18} 
+                        color={selectedMedInstance.statusText === "Missed" 
+                          ? (isDarkMode ? "#e57373" : "#c62828") 
+                          : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText)} 
+                      />
+                      <Text style={[
+                        styles.statusBadgeText,
+                        {
+                          color: selectedMedInstance.statusText === "Missed" 
+                            ? (isDarkMode ? "#e57373" : "#c62828") 
+                            : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText)
+                        }
+                      ]}>
+                        {selectedMedInstance.statusText === "Missed" ? "Missed" : (selectedMedInstance.statusText === "Take" ? "Take Now" : (selectedMedInstance.statusText === "Locked" ? "Locked" : "Not Taken"))}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Timing Info */}
+                <Text style={[styles.modalTimeInfo, { color: theme.subText }]}>
+                  Scheduled: {selectedMedInstance.scheduledTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </Text>
+
+                {/* Take Dose Now Action Button */}
+                {selectedMedInstance.canTake && (
+                  <Pressable
+                    onPress={() => handleTakeMedication(selectedMedInstance)}
+                    style={({ pressed }) => [
+                      styles.modalActionBtn,
+                      pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={isDarkMode ? ["#004d40", "#00796b"] : ["#67fc67", "#026e02"]}
+                      style={styles.modalActionGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <FontAwesome6 name="check-double" size={16} color="white" style={{ marginRight: 8 }} />
+                      <Text style={styles.modalActionText}>Take Medication Now</Text>
+                    </LinearGradient>
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            <Pressable
+              onPress={() => setIsPhotoModalVisible(false)}
+              style={({ pressed }) => [
+                styles.modalCloseBtn,
+                pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+              ]}
+            >
+              <LinearGradient
+                colors={isDarkMode ? ["#80cbc4", "#004d40"] : ["#67fc67", "#026e02"]}
+                style={styles.modalCloseGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Medication Photo Zoom Modal */}
+      <Modal
+        visible={isZoomModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsZoomModalVisible(false)}
+      >
+        <View style={styles.zoomOverlay}>
+          <Pressable style={styles.zoomCloseButton} onPress={() => setIsZoomModalVisible(false)}>
+            <MaterialIcons name="close" size={30} color="white" />
+          </Pressable>
+          
+          {selectedMedInstance?.medicine.imageUrl && (
+            <ScrollView
+              maximumZoomScale={5}
+              minimumZoomScale={1}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.zoomScrollContent}
+            >
+              <Image
+                source={{ uri: selectedMedInstance.medicine.imageUrl }}
+                style={styles.zoomImage}
+              />
+            </ScrollView>
+          )}
+          
+          <View style={styles.zoomTip}>
+            <Text style={styles.zoomTipText}>Pinch to Zoom / Pan to explore</Text>
           </View>
         </View>
       </Modal>
@@ -496,6 +714,125 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalCloseText: {
+    color: "white",
+    fontSize: 16,
+    fontFamily: "ComicBold",
+  },
+  photoModalBody: {
+    alignItems: "center",
+    marginVertical: 10,
+    gap: 12,
+  },
+  modalImageContainer: {
+    width: "100%",
+    height: 240,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  modalImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  modalMedName: {
+    fontSize: 22,
+    fontFamily: "ComicBold",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  modalMedDosage: {
+    fontSize: 15,
+    fontFamily: "ComicRegular",
+    textAlign: "center",
+  },
+  statusBadgeRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginVertical: 4,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 14,
+    fontFamily: "ComicBold",
+  },
+  modalTimeInfo: {
+    fontSize: 14,
+    fontFamily: "ComicRegular",
+    textAlign: "center",
+  },
+  zoomIconIndicator: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 6,
+    borderRadius: 16,
+  },
+  zoomOverlay: {
+    flex: 1,
+    backgroundColor: "black",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  zoomCloseButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 30,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    padding: 8,
+    borderRadius: 22,
+  },
+  zoomScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  zoomImage: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height * 0.75,
+    resizeMode: "contain",
+  },
+  zoomTip: {
+    position: "absolute",
+    bottom: 40,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  zoomTipText: {
+    color: "white",
+    fontSize: 13,
+    fontFamily: "ComicRegular",
+  },
+  modalActionBtn: {
+    marginTop: 15,
+    borderRadius: 12,
+    overflow: "hidden",
+    width: "100%",
+  },
+  modalActionGradient: {
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalActionText: {
     color: "white",
     fontSize: 16,
     fontFamily: "ComicBold",

@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { overrideTextDefaultFont } from "@/providers/fontProvider";
 import { ThemeProvider } from "@/providers/themeProvider";
 import * as Notifications from "expo-notifications";
+import { migrateFromAsyncStorage } from "@/storage/db";
 
 export default function Layout() {
   const router = useRouter();
@@ -12,6 +13,11 @@ export default function Layout() {
     ComicRegular: require("../assets/fonts/ComicRelief-Regular.ttf"),
     ComicBold: require("../assets/fonts/ComicRelief-Bold.ttf"),
   });
+
+  useEffect(() => {
+    // Run database migration helper from AsyncStorage
+    migrateFromAsyncStorage();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {

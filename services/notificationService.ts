@@ -44,11 +44,14 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
 
     // Android-specific channel configurations
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
+      await Notifications.setNotificationChannelAsync("medtime-meds", {
+        name: "MedTime Medication Reminders",
         importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#FF231F7C",
+        lightColor: "#67fc67",
+        enableVibrate: true,
+        showBadge: true,
       });
     }
 
@@ -68,6 +71,66 @@ export async function scheduleMedicationNotifications(
 ): Promise<{ triggerIds: string[]; nextDose: string | null }> {
   // If reminders are explicitly disabled for this medicine, do not schedule
   if (medicine.reminder === false) return { triggerIds: [], nextDose: null };
+
+  if (medicine.isArchived) return { triggerIds: [], nextDose: null };
+
+  if (medicine.endDate) {
+    const today = new Date();
+    const end = new Date(medicine.endDate);
+    
+    const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endZero = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    
+    if (todayZero > endZero) {
+      return { triggerIds: [], nextDose: null };
+    }
+    
+    if (todayZero.getTime() === endZero.getTime()) {
+      // Find latest timing
+      const timings = medicine.timings || [];
+      if (timings.length > 0) {
+        let maxHour = -1;
+        let maxMinute = -1;
+        timings.forEach((t) => {
+          const timeDate = new Date(t);
+          const h = timeDate.getHours();
+          const m = timeDate.getMinutes();
+          if (h > maxHour || (h === maxHour && m > maxMinute)) {
+            maxHour = h;
+            maxMinute = m;
+          }
+        });
+        
+        if (maxHour !== -1) {
+          const finalScheduledTime = new Date(
+            end.getFullYear(),
+            end.getMonth(),
+            end.getDate(),
+            maxHour,
+            maxMinute,
+            0,
+            0
+          );
+          
+          const windowEnd = finalScheduledTime.getTime() + 60 * 60 * 1000;
+          
+          // If past final dose window
+          if (today.getTime() > windowEnd) {
+            return { triggerIds: [], nextDose: null };
+          }
+          
+          // Check if last dose was taken (if lastTaken is within the final scheduled window)
+          if (medicine.lastTaken) {
+            const lastTakenDate = new Date(medicine.lastTaken);
+            const windowStart = finalScheduledTime.getTime() - 60 * 60 * 1000;
+            if (lastTakenDate.getTime() >= windowStart && lastTakenDate.getTime() <= windowEnd) {
+              return { triggerIds: [], nextDose: null };
+            }
+          }
+        }
+      }
+    }
+  }
 
   const isEnabled = await registerForPushNotificationsAsync();
   if (!isEnabled) {
@@ -109,43 +172,48 @@ export async function scheduleMedicationNotifications(
   const windowStart = new Date(nextActiveTime.getTime() - 60 * 60 * 1000);
   const windowEnd = new Date(nextActiveTime.getTime() + 60 * 60 * 1000);
 
-  // 4. Schedule take-medication reminders every 5 minutes in this 2-hour window
-  // (24 steps from windowStart up to windowEnd - 5 mins)
+  // 4. Schedule targeted reminders at key moments in the dose window:
+  //    T-30min (heads up), T (dose time), T+30min (follow-up), T+60min (missed)
+  // This keeps us well within iOS's 64-notification local cap across all medicines.
   const timeStr = nextActiveTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-  for (let minOffset = 0; minOffset < 120; minOffset += 5) {
-    const triggerTime = new Date(windowStart.getTime() + minOffset * 60 * 1000);
-    
-    // Only schedule if the trigger time is in the future
+  const reminderOffsets = [-30, 0, 30]; // minutes relative to scheduled time
+  for (const offsetMin of reminderOffsets) {
+    const triggerTime = new Date(nextActiveTime.getTime() + offsetMin * 60 * 1000);
     if (triggerTime > now) {
+      const isPreReminder = offsetMin < 0;
       try {
         const id = await Notifications.scheduleNotificationAsync({
           content: {
-            title: "Medication Time! 💊",
-            body: `It's time to take your dose of ${medicine.name} (${medicine.dosage}) scheduled for ${timeStr}. Please take it soon!`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
+            title: isPreReminder ? "Upcoming Medication 💊" : "Medication Time! 💊",
+            body: isPreReminder
+              ? `Reminder: Take ${medicine.name} (${medicine.dosage}) in ${Math.abs(offsetMin)} minutes at ${timeStr}.`
+              : `It's time to take your dose of ${medicine.name} (${medicine.dosage}) scheduled for ${timeStr}.`,
+            sound: "default",
+            priority: Notifications.AndroidNotificationPriority.MAX,
             data: { medicineId: medicine.id },
+            ...(Platform.OS === "android" && { channelId: "medtime-meds" }),
           },
           trigger: { type: "date", date: triggerTime } as any,
         });
         triggerIds.push(id);
       } catch (err) {
-        console.error("Error scheduling 5-min reminder:", err);
+        console.error("Error scheduling reminder:", err);
       }
     }
   }
 
-  // 5. Schedule the final "Missed" notification at exactly T + 1 hour (windowEnd)
+  // 5. Schedule the final "Missed" notification at T + 60 minutes (windowEnd)
   if (windowEnd > now) {
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: "Missed Medication Alert! ⚠️",
           body: `You missed your dose of ${medicine.name} (${medicine.dosage}) scheduled for ${timeStr} today.`,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
+          sound: "default",
+          priority: Notifications.AndroidNotificationPriority.MAX,
           data: { medicineId: medicine.id },
+          ...(Platform.OS === "android" && { channelId: "medtime-meds" }),
         },
         trigger: { type: "date", date: windowEnd } as any,
       });
@@ -153,6 +221,7 @@ export async function scheduleMedicationNotifications(
     } catch (err) {
       console.error("Error scheduling missed dose warning:", err);
     }
+
   }
 
   return { triggerIds, nextDose: nextActiveTime.toISOString() };

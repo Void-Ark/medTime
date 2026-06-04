@@ -1,15 +1,14 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Medicine, MedicineType, MedicinePatternType, IntakeLog } from "../schemas";
+import { db, mapRowToMedicine, mapMedicineToValues } from "./db";
 import { addHistoryEntry } from "./history";
 import {
   scheduleMedicationNotifications,
   cancelScheduledNotifications,
 } from "../services/notificationService";
+import { deleteImageFromAppStorage } from "../utils/imageStorage";
 
 // Re-export types for backward compatibility
 export { Medicine, MedicineType, MedicinePatternType };
-
-const KEY = "medicines";
 
 export async function addMedicine(newMedicine: Medicine): Promise<boolean> {
   try {
@@ -21,12 +20,11 @@ export async function addMedicine(newMedicine: Medicine): Promise<boolean> {
       nextDose: nextDose || undefined,
     };
 
-    const storedMedicines = await AsyncStorage.getItem(KEY);
-    const storedMedicinesJSON: Medicine[] = storedMedicines
-      ? JSON.parse(storedMedicines)
-      : [];
-    storedMedicinesJSON.push(medWithTriggers);
-    await AsyncStorage.setItem(KEY, JSON.stringify(storedMedicinesJSON));
+    const vals = mapMedicineToValues(medWithTriggers);
+    await db.runAsync(`
+      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `, vals);
     return true;
   } catch (error) {
     console.error("Error adding medicine", error);
@@ -36,14 +34,13 @@ export async function addMedicine(newMedicine: Medicine): Promise<boolean> {
 
 export async function getMedicines(): Promise<Medicine[]> {
   try {
-    const storedMedicines = await AsyncStorage.getItem(KEY);
-    let storedMedicinesJSON: Medicine[] = storedMedicines
-      ? JSON.parse(storedMedicines)
-      : [];
+    const rows = await db.getAllAsync("SELECT * FROM medicines;");
+    const storedMedicinesJSON = rows.map(mapRowToMedicine);
 
     // Background sync: automatically reschedule expired notifications / missing nextDose
     const now = new Date();
     let needsSave = false;
+    const updatedMedicines: Medicine[] = [];
 
     for (let i = 0; i < storedMedicinesJSON.length; i++) {
       const med = storedMedicinesJSON[i];
@@ -61,18 +58,31 @@ export async function getMedicines(): Promise<Medicine[]> {
             await cancelScheduledNotifications(med.notificationTriggerIds);
           }
           const { triggerIds, nextDose } = await scheduleMedicationNotifications(med);
-          storedMedicinesJSON[i] = {
+          const updated = {
             ...med,
             notificationTriggerIds: triggerIds,
             nextDose: nextDose || undefined,
           };
+          storedMedicinesJSON[i] = updated;
+          updatedMedicines.push(updated);
           needsSave = true;
         }
       }
     }
 
     if (needsSave) {
-      await AsyncStorage.setItem(KEY, JSON.stringify(storedMedicinesJSON));
+      for (const updatedMed of updatedMedicines) {
+        await db.runAsync(`
+          UPDATE medicines SET 
+            notificationTriggerIds = ?, 
+            nextDose = ? 
+          WHERE id = ?;
+        `, [
+          updatedMed.notificationTriggerIds ? JSON.stringify(updatedMed.notificationTriggerIds) : null,
+          updatedMed.nextDose ? (typeof updatedMed.nextDose === 'string' ? updatedMed.nextDose : updatedMed.nextDose.toISOString()) : null,
+          updatedMed.id
+        ]);
+      }
     }
 
     return storedMedicinesJSON;
@@ -84,22 +94,21 @@ export async function getMedicines(): Promise<Medicine[]> {
 
 export async function removeMedicine(id: string): Promise<boolean> {
   try {
-    const storedMedicines = await AsyncStorage.getItem(KEY);
-    const storedMedicinesJSON: Medicine[] = storedMedicines
-      ? JSON.parse(storedMedicines)
-      : [];
-
-    // Cancel all scheduled notifications for the deleted medicine
-    const existing = storedMedicinesJSON.find((m) => m.id === id);
-    if (existing && existing.notificationTriggerIds) {
-      await cancelScheduledNotifications(existing.notificationTriggerIds);
+    const row = await db.getFirstAsync("SELECT * FROM medicines WHERE id = ?;", [id]);
+    if (row) {
+      const existing = mapRowToMedicine(row);
+      // Cancel all scheduled notifications for the deleted medicine
+      if (existing.notificationTriggerIds) {
+        await cancelScheduledNotifications(existing.notificationTriggerIds);
+      }
+      // Delete associated image file from app storage
+      if (existing.imageUrl) {
+        await deleteImageFromAppStorage(existing.imageUrl);
+      }
+      await db.runAsync("DELETE FROM medicines WHERE id = ?;", [id]);
+      return true;
     }
-
-    const newMedicines = storedMedicinesJSON.filter(
-      (medicine: Medicine) => medicine.id !== id
-    );
-    await AsyncStorage.setItem(KEY, JSON.stringify(newMedicines));
-    return true;
+    return false;
   } catch (error) {
     console.error("Error removing medicine", error);
     return false;
@@ -108,61 +117,57 @@ export async function removeMedicine(id: string): Promise<boolean> {
 
 export async function markAsTaken(id: string): Promise<boolean> {
   try {
-    const stored = await AsyncStorage.getItem(KEY);
-    let medicines: Medicine[] = stored ? JSON.parse(stored) : [];
+    const row = await db.getFirstAsync("SELECT * FROM medicines WHERE id = ?;", [id]);
+    if (!row) return false;
 
-    let medicineToMark: Medicine | undefined;
+    const medicineToMark = mapRowToMedicine(row);
+    const newStock = medicineToMark.stockCount > 0 ? medicineToMark.stockCount - 1 : 0;
+    const takenDate = new Date();
 
-    medicines = medicines.map((m) => {
-      if (m.id === id) {
-        medicineToMark = m;
-        const newStock = m.stockCount > 0 ? m.stockCount - 1 : 0;
-        return {
-          ...m,
-          taken: true,
-          stockCount: newStock,
-          lastTaken: new Date(),
-        };
-      }
-      return m;
-    });
-
-    if (medicineToMark) {
-      // 1. Cancel previous notifications for this active window
-      if (medicineToMark.notificationTriggerIds) {
-        await cancelScheduledNotifications(medicineToMark.notificationTriggerIds);
-      }
-
-      // 2. Schedule push notifications for the *next* chronological timings window
-      const { triggerIds: newTriggerIds, nextDose: newNextDose } = await scheduleMedicationNotifications(medicineToMark);
-
-      // Save the new trigger IDs and nextDose back to our array
-      medicines = medicines.map((m) => {
-        if (m.id === id) {
-          return {
-            ...m,
-            notificationTriggerIds: newTriggerIds,
-            nextDose: newNextDose || undefined,
-          };
-        }
-        return m;
-      });
+    // 1. Cancel previous notifications for this active window
+    if (medicineToMark.notificationTriggerIds) {
+      await cancelScheduledNotifications(medicineToMark.notificationTriggerIds);
     }
 
-    await AsyncStorage.setItem(KEY, JSON.stringify(medicines));
+    // Create a temporary object for rescheduling logic
+    const tempMed = {
+      ...medicineToMark,
+      taken: true,
+      stockCount: newStock,
+      lastTaken: takenDate.toISOString(),
+    };
 
-    // If medicine was found, append to intake history logs
-    if (medicineToMark) {
-      const log: IntakeLog = {
-        id: Math.random().toString(36).substring(7),
-        medicineId: id,
-        medicineName: medicineToMark.name,
-        dosage: medicineToMark.dosage,
-        takenAt: new Date(),
-        status: "taken",
-      };
-      await addHistoryEntry(log);
-    }
+    // 2. Schedule push notifications for the *next* chronological timings window
+    const { triggerIds: newTriggerIds, nextDose: newNextDose } = await scheduleMedicationNotifications(tempMed);
+
+    // 3. Save the new trigger IDs, nextDose, taken, stockCount, and lastTaken back to SQLite
+    await db.runAsync(`
+      UPDATE medicines SET 
+        taken = 1, 
+        stockCount = ?, 
+        lastTaken = ?, 
+        notificationTriggerIds = ?, 
+        nextDose = ? 
+      WHERE id = ?;
+    `, [
+      newStock, 
+      takenDate.toISOString(), 
+      newTriggerIds ? JSON.stringify(newTriggerIds) : null,
+      newNextDose || null,
+      id
+    ]);
+
+    // 4. Append to intake history logs
+    const log: IntakeLog = {
+      id: `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`,
+      medicineId: id,
+      medicineName: medicineToMark.name,
+      dosage: medicineToMark.dosage,
+      takenAt: takenDate.toISOString(),
+      status: "taken",
+    };
+    await addHistoryEntry(log);
+
     return true;
   } catch (error) {
     console.error("Error marking medicine as taken:", error);
@@ -172,15 +177,13 @@ export async function markAsTaken(id: string): Promise<boolean> {
 
 export async function updateMedicine(updatedMed: Medicine): Promise<boolean> {
   try {
-    const storedMedicines = await AsyncStorage.getItem(KEY);
-    let storedMedicinesJSON: Medicine[] = storedMedicines
-      ? JSON.parse(storedMedicines)
-      : [];
-
     // Cancel old alarms before scheduling new ones
-    const existing = storedMedicinesJSON.find((m) => m.id === updatedMed.id);
-    if (existing && existing.notificationTriggerIds) {
-      await cancelScheduledNotifications(existing.notificationTriggerIds);
+    const row = await db.getFirstAsync("SELECT * FROM medicines WHERE id = ?;", [updatedMed.id]);
+    if (row) {
+      const existing = mapRowToMedicine(row);
+      if (existing.notificationTriggerIds) {
+        await cancelScheduledNotifications(existing.notificationTriggerIds);
+      }
     }
 
     // Schedule new alarms and get fresh trigger IDs and nextDose
@@ -191,13 +194,48 @@ export async function updateMedicine(updatedMed: Medicine): Promise<boolean> {
       nextDose: newNextDose || undefined,
     };
 
-    storedMedicinesJSON = storedMedicinesJSON.map((m) =>
-      m.id === updatedMed.id ? medWithNewTriggers : m
-    );
-    await AsyncStorage.setItem(KEY, JSON.stringify(storedMedicinesJSON));
+    const vals = mapMedicineToValues(medWithNewTriggers);
+    await db.runAsync(`
+      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `, vals);
+
     return true;
   } catch (error) {
     console.error("Error updating medicine", error);
     return false;
   }
 }
+
+export async function refillMedicineStock(id: string, refillAmount: number): Promise<boolean> {
+  try {
+    const row = await db.getFirstAsync("SELECT stockCount FROM medicines WHERE id = ?;", [id]);
+    if (!row) return false;
+    const currentStock = (row as any).stockCount || 0;
+    const newStock = currentStock + refillAmount;
+    await db.runAsync("UPDATE medicines SET stockCount = ?, updatedAt = ? WHERE id = ?;", [
+      newStock,
+      new Date().toISOString(),
+      id
+    ]);
+    return true;
+  } catch (error) {
+    console.error("Error refilling medicine stock:", error);
+    return false;
+  }
+}
+
+export async function updateMedicineStock(id: string, newStock: number): Promise<boolean> {
+  try {
+    await db.runAsync("UPDATE medicines SET stockCount = ?, updatedAt = ? WHERE id = ?;", [
+      newStock,
+      new Date().toISOString(),
+      id
+    ]);
+    return true;
+  } catch (error) {
+    console.error("Error updating medicine stock count:", error);
+    return false;
+  }
+}
+
