@@ -21,6 +21,7 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 import { exportBackupData, importBackupData } from "@/storage/db";
 
 const Settings = () => {
@@ -32,6 +33,14 @@ const Settings = () => {
       : insets.top;
 
   const { isDarkMode, toggleTheme, theme } = useAppTheme();
+  const {
+    seniorModeEnabled,
+    toggleSeniorMode,
+    loudAlarmsEnabled,
+    toggleLoudAlarms,
+    fontSize,
+    touchTarget,
+  } = useAccessibility();
 
   // Settings states
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
@@ -149,7 +158,7 @@ const Settings = () => {
           >
             <Entypo name="chevron-left" size={32} color="#ffffff" />
           </Pressable>
-          <Text style={styles.headerTitle}>Settings Panel</Text>
+          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>Settings Panel</Text>
           <View style={{ width: 32 }} />
         </View>
       </LinearGradient>
@@ -158,13 +167,13 @@ const Settings = () => {
         {/* Theme Settings Card */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
           <View style={styles.cardHeader}>
-            <MaterialIcons name="color-lens" size={24} color={isDarkMode ? "#80cbc4" : "#026e02"} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Appearance</Text>
+            <MaterialIcons name="color-lens" size={fontSize("xl")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
+            <Text style={[styles.cardTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Appearance</Text>
           </View>
           <View style={styles.settingRow}>
-            <View>
-              <Text style={[styles.settingLabel, { color: theme.text }]}>Dark Mode</Text>
-              <Text style={styles.settingDesc}>Toggle a sleek nocturnal appearance</Text>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={[styles.settingLabel, { color: theme.text, fontSize: fontSize("md") }]}>Dark Mode</Text>
+              <Text style={[styles.settingDesc, { fontSize: fontSize("xs") }]}>Toggle a sleek nocturnal appearance</Text>
             </View>
             <Switch
               value={isDarkMode}
@@ -175,16 +184,50 @@ const Settings = () => {
           </View>
         </View>
 
+        {/* Accessibility Settings Card */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="accessibility" size={fontSize("xl")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
+            <Text style={[styles.cardTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Accessibility Options</Text>
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={[styles.settingLabel, { color: theme.text, fontSize: fontSize("md") }]}>Senior Layout Mode</Text>
+              <Text style={[styles.settingDesc, { fontSize: fontSize("xs") }]}>Enlarges text sizing and button touch targets for easier reading and tapping</Text>
+            </View>
+            <Switch
+              value={seniorModeEnabled}
+              onValueChange={toggleSeniorMode}
+              trackColor={{ false: "#ccc", true: isDarkMode ? "#80cbc4" : "#a5daa5" }}
+              thumbColor={seniorModeEnabled ? (isDarkMode ? "#00796b" : "#026e02") : "#f4f3f3"}
+            />
+          </View>
+
+          <View style={[styles.settingRow, { marginTop: 15 }]}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={[styles.settingLabel, { color: theme.text, fontSize: fontSize("md") }]}>Louder & Repeating Alarms</Text>
+              <Text style={[styles.settingDesc, { fontSize: fontSize("xs") }]}>Repeats notification triggers every 10 minutes and uses intense vibration patterns</Text>
+            </View>
+            <Switch
+              value={loudAlarmsEnabled}
+              onValueChange={toggleLoudAlarms}
+              trackColor={{ false: "#ccc", true: isDarkMode ? "#80cbc4" : "#a5daa5" }}
+              thumbColor={loudAlarmsEnabled ? (isDarkMode ? "#00796b" : "#026e02") : "#f4f3f3"}
+            />
+          </View>
+        </View>
+
         {/* Notifications Settings Card */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
           <View style={styles.cardHeader}>
-            <MaterialIcons name="notifications" size={24} color={isDarkMode ? "#80cbc4" : "#026e02"} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Reminders Settings</Text>
+            <MaterialIcons name="notifications" size={fontSize("xl")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
+            <Text style={[styles.cardTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Reminders Settings</Text>
           </View>
           <View style={styles.settingRow}>
-            <View>
-              <Text style={[styles.settingLabel, { color: theme.text }]}>Active Alarms</Text>
-              <Text style={styles.settingDesc}>Enable global alarms and reminders</Text>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={[styles.settingLabel, { color: theme.text, fontSize: fontSize("md") }]}>Active Alarms</Text>
+              <Text style={[styles.settingDesc, { fontSize: fontSize("xs") }]}>Enable global alarms and reminders</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -198,11 +241,11 @@ const Settings = () => {
         {/* Backup Database Card */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
           <View style={styles.cardHeader}>
-            <MaterialIcons name="backup" size={24} color={isDarkMode ? "#80cbc4" : "#026e02"} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Data Backup & Recovery</Text>
+            <MaterialIcons name="backup" size={fontSize("xl")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
+            <Text style={[styles.cardTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Data Backup & Recovery</Text>
           </View>
 
-          <Text style={[styles.settingDescParagraph, { color: theme.subText }]}>
+          <Text style={[styles.settingDescParagraph, { color: theme.subText, fontSize: fontSize("xs") }]}>
             Export your complete medications list and intake logs to store as an offline JSON backup, or import past data values below.
           </Text>
 
@@ -211,24 +254,34 @@ const Settings = () => {
             <Pressable
               style={[
                 styles.btn,
-                { backgroundColor: isDarkMode ? "#004d40" : "#e8f5e9", borderColor: isDarkMode ? "#00796b" : "#a5daa5" },
+                {
+                  backgroundColor: isDarkMode ? "#004d40" : "#e8f5e9",
+                  borderColor: isDarkMode ? "#00796b" : "#a5daa5",
+                  paddingVertical: touchTarget("paddingV"),
+                  minHeight: touchTarget("minHeight"),
+                },
               ]}
               onPress={handleExport}
             >
-              <FontAwesome6 name="share-from-square" size={16} color={isDarkMode ? "#80cbc4" : "#026e02"} />
-              <Text style={[styles.btnText, { color: isDarkMode ? "#80cbc4" : "#026e02" }]}>Export Backup</Text>
+              <FontAwesome6 name="share-from-square" size={fontSize("sm")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
+              <Text style={[styles.btnText, { color: isDarkMode ? "#80cbc4" : "#026e02", fontSize: fontSize("sm") }]}>Export Backup</Text>
             </Pressable>
 
             {/* Import */}
             <Pressable
               style={[
                 styles.btn,
-                { backgroundColor: isDarkMode ? "#37474f" : "#f5f5f5", borderColor: isDarkMode ? "#455a64" : "#ccc" },
+                {
+                  backgroundColor: isDarkMode ? "#37474f" : "#f5f5f5",
+                  borderColor: isDarkMode ? "#455a64" : "#ccc",
+                  paddingVertical: touchTarget("paddingV"),
+                  minHeight: touchTarget("minHeight"),
+                },
               ]}
               onPress={() => setImportModalVisible(true)}
             >
-              <FontAwesome6 name="file-import" size={16} color={isDarkMode ? "#cfd8dc" : "#555"} />
-              <Text style={[styles.btnText, { color: isDarkMode ? "#cfd8dc" : "#555" }]}>Import Backup</Text>
+              <FontAwesome6 name="file-import" size={fontSize("sm")} color={isDarkMode ? "#cfd8dc" : "#555"} />
+              <Text style={[styles.btnText, { color: isDarkMode ? "#cfd8dc" : "#555", fontSize: fontSize("sm") }]}>Import Backup</Text>
             </Pressable>
           </View>
         </View>
@@ -243,8 +296,8 @@ const Settings = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Restore Medication Database</Text>
-            <Text style={styles.settingDesc}>Paste your exported JSON backup text string here:</Text>
+            <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Restore Medication Database</Text>
+            <Text style={[styles.settingDesc, { fontSize: fontSize("xs") }]}>Paste your exported JSON backup text string here:</Text>
 
             <TextInput
               style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
@@ -258,17 +311,28 @@ const Settings = () => {
 
             <View style={styles.modalButtonRow}>
               <Pressable
-                style={[styles.modalBtn, styles.cancelBtn]}
+                style={[
+                  styles.modalBtn,
+                  styles.cancelBtn,
+                  { minHeight: touchTarget("minHeight"), justifyContent: "center" },
+                ]}
                 onPress={() => {
                   setImportModalVisible(false);
                   setPastedBackup("");
                 }}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={[styles.cancelBtnText, { fontSize: fontSize("sm") }]}>Cancel</Text>
               </Pressable>
 
-              <Pressable style={[styles.modalBtn, styles.restoreBtn]} onPress={handleImport}>
-                <Text style={styles.restoreBtnText}>Restore</Text>
+              <Pressable
+                style={[
+                  styles.modalBtn,
+                  styles.restoreBtn,
+                  { minHeight: touchTarget("minHeight"), justifyContent: "center" },
+                ]}
+                onPress={handleImport}
+              >
+                <Text style={[styles.restoreBtnText, { fontSize: fontSize("sm") }]}>Restore</Text>
               </Pressable>
             </View>
           </View>
@@ -296,7 +360,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "white",
-    fontSize: 22,
     fontFamily: "ComicBold",
   },
   scrollContent: {
@@ -319,7 +382,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cardTitle: {
-    fontSize: 18,
     fontFamily: "ComicBold",
   },
   settingRow: {
@@ -329,16 +391,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   settingLabel: {
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
   settingDesc: {
-    fontSize: 13,
     color: "#888",
     marginTop: 2,
   },
   settingDescParagraph: {
-    fontSize: 13,
     lineHeight: 18,
     marginBottom: 15,
   },
@@ -352,13 +411,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     gap: 8,
   },
   btnText: {
-    fontSize: 14,
     fontFamily: "ComicBold",
   },
   modalOverlay: {
@@ -379,7 +436,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
     fontFamily: "ComicBold",
     marginBottom: 5,
   },
@@ -401,7 +457,6 @@ const styles = StyleSheet.create({
   },
   modalBtn: {
     flex: 1,
-    paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
   },
@@ -410,7 +465,6 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     color: "#333",
-    fontSize: 14,
     fontFamily: "ComicBold",
   },
   restoreBtn: {
@@ -418,7 +472,7 @@ const styles = StyleSheet.create({
   },
   restoreBtnText: {
     color: "white",
-    fontSize: 14,
     fontFamily: "ComicBold",
   },
 });
+

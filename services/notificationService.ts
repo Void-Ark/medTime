@@ -2,6 +2,7 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Medicine } from "@/schemas";
 
 // Configure how notifications behave when the app is in the foreground
@@ -44,6 +45,7 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
 
     // Android-specific channel configurations
     if (Platform.OS === "android") {
+      // Standard channel
       await Notifications.setNotificationChannelAsync("medtime-meds", {
         name: "MedTime Medication Reminders",
         importance: Notifications.AndroidImportance.MAX,
@@ -52,6 +54,18 @@ export async function registerForPushNotificationsAsync(): Promise<boolean> {
         lightColor: "#67fc67",
         enableVibrate: true,
         showBadge: true,
+      });
+
+      // Loud/Repeating Channel with intense vibration pattern
+      await Notifications.setNotificationChannelAsync("medtime-meds-loud", {
+        name: "MedTime Medication Alarms (Loud)",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
+        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000],
+        lightColor: "#ff0000",
+        enableVibrate: true,
+        showBadge: true,
+        bypassDnd: true,
       });
     }
 
@@ -172,12 +186,19 @@ export async function scheduleMedicationNotifications(
   const windowStart = new Date(nextActiveTime.getTime() - 60 * 60 * 1000);
   const windowEnd = new Date(nextActiveTime.getTime() + 60 * 60 * 1000);
 
-  // 4. Schedule targeted reminders at key moments in the dose window:
-  //    T-30min (heads up), T (dose time), T+30min (follow-up), T+60min (missed)
-  // This keeps us well within iOS's 64-notification local cap across all medicines.
+  // 4. Determine if Loud Alarms are enabled
+  const loudAlarmsStr = await AsyncStorage.getItem("loud_alarms_enabled");
+  const loudAlarmsEnabled = loudAlarmsStr !== "false"; // Default to true
+  const channelId = loudAlarmsEnabled ? "medtime-meds-loud" : "medtime-meds";
+
+  // If loud alarms are enabled: trigger alarm at T, and repeat every 10 minutes (T, T+10, T+20, T+30, T+40, T+50)
+  // Otherwise: use standard [T-30, T, T+30]
+  const reminderOffsets = loudAlarmsEnabled
+    ? [0, 10, 20, 30, 40, 50]
+    : [-30, 0, 30];
+
   const timeStr = nextActiveTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-  const reminderOffsets = [-30, 0, 30]; // minutes relative to scheduled time
   for (const offsetMin of reminderOffsets) {
     const triggerTime = new Date(nextActiveTime.getTime() + offsetMin * 60 * 1000);
     if (triggerTime > now) {
@@ -192,7 +213,7 @@ export async function scheduleMedicationNotifications(
             sound: "default",
             priority: Notifications.AndroidNotificationPriority.MAX,
             data: { medicineId: medicine.id },
-            ...(Platform.OS === "android" && { channelId: "medtime-meds" }),
+            ...(Platform.OS === "android" && { channelId }),
           },
           trigger: { type: "date", date: triggerTime } as any,
         });
@@ -213,7 +234,7 @@ export async function scheduleMedicationNotifications(
           sound: "default",
           priority: Notifications.AndroidNotificationPriority.MAX,
           data: { medicineId: medicine.id },
-          ...(Platform.OS === "android" && { channelId: "medtime-meds" }),
+          ...(Platform.OS === "android" && { channelId }),
         },
         trigger: { type: "date", date: windowEnd } as any,
       });
@@ -221,7 +242,6 @@ export async function scheduleMedicationNotifications(
     } catch (err) {
       console.error("Error scheduling missed dose warning:", err);
     }
-
   }
 
   return { triggerIds, nextDose: nextActiveTime.toISOString() };
@@ -240,3 +260,4 @@ export async function cancelScheduledNotifications(triggerIds: string[]) {
     }
   }
 }
+

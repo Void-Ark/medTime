@@ -21,6 +21,7 @@ import PhotoPickerSection from "@/components/medication/add/PhotoPickerSection";
 import SchedulePatternSection from "@/components/medication/add/SchedulePatternSection";
 import DurationSection from "@/components/medication/add/DurationSection";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 import { saveImageToAppStorage, deleteImageFromAppStorage } from "@/utils/imageStorage";
 
 const MedicationAdd = () => {
@@ -28,6 +29,7 @@ const MedicationAdd = () => {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditMode = !!id;
   const { theme, isDarkMode } = useAppTheme();
+  const { fontSize, touchTarget } = useAccessibility();
   const insets = useSafeAreaInsets();
 
   const statusBarHeight =
@@ -98,53 +100,28 @@ const MedicationAdd = () => {
   // Clean sub-pattern states on timing schedule resets
   useEffect(() => {
     if (isEditMode && !isLoaded) return; // Skip during initial populating load
-    
-    if (patternType === "weekly") {
-      setPattern([]);
-    } else {
-      setPattern(null);
-    }
-  }, [patternType, isLoaded]);
+    setPattern(null);
+  }, [patternType]);
 
+  // Main CRUD handler
   const handleSave = async () => {
     if (!name.trim()) {
-      alert("Please enter a medication name");
+      alert("Please enter the name of the medicine.");
       return;
     }
     if (!dosage.trim()) {
-      alert("Please enter a dosage");
-      return;
-    }
-    if (!frequency || frequency <= 0) {
-      alert("Please enter a valid number of times a day");
+      alert("Please specify the prescribed dosage.");
       return;
     }
 
-    if (patternType === "weekly" && (!pattern || pattern.length === 0)) {
-      alert("Please select at least one day of the week for weekly schedule.");
-      return;
-    }
-    if (patternType === "monthly" && (!pattern || pattern.length === 0 || !pattern[0])) {
-      alert("Please enter a valid day of the month (1-31) for monthly schedule.");
-      return;
-    }
+    const medId = isEditMode && id ? id : Date.now().toString();
 
-    const medId = isEditMode && id ? id : `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
-
-    // Save image to permanent app storage if picked/exists
-    let finalImageUrl: string | undefined = undefined;
-    if (imageUri) {
-      const savedUri = await saveImageToAppStorage(imageUri, medId);
-      if (savedUri) {
-        finalImageUrl = savedUri;
-      }
-    } else {
-      // User explicitly cleared the image, delete the old file if in edit mode
-      if (isEditMode && id) {
-        const existing = medicines.find((m) => m.id === id);
-        if (existing && existing.imageUrl) {
-          await deleteImageFromAppStorage(existing.imageUrl);
-        }
+    // Persist photo to secure filesystem if added
+    let finalImageUrl = imageUri;
+    if (imageUri && !imageUri.startsWith("file://")) {
+      const localPath = await saveImageToAppStorage(imageUri, medId);
+      if (localPath) {
+        finalImageUrl = localPath;
       }
     }
 
@@ -162,7 +139,7 @@ const MedicationAdd = () => {
       type: MedType,
       patternType,
       pattern,
-      imageUrl: finalImageUrl,
+      imageUrl: finalImageUrl || undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -196,10 +173,10 @@ const MedicationAdd = () => {
             paddingVertical: 10,
           }}
         >
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => router.back()} style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }}>
             <Entypo
               name="home"
-              size={36}
+              size={fontSize("xl") * 1.5}
               color="#ffffff"
               style={{ margin: 10 }}
             />
@@ -211,7 +188,7 @@ const MedicationAdd = () => {
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: "white", fontSize: 22, fontFamily: "ComicBold" }}>
+            <Text style={{ color: "white", fontSize: fontSize("xl"), fontFamily: "ComicBold" }}>
               {isEditMode ? "Edit Medication" : "Add Medication"}
             </Text>
           </View>
@@ -306,17 +283,17 @@ const MedicationAdd = () => {
           onPress={handleSave}
           style={({ pressed }: { pressed: boolean }) => [
             styles.saveButton,
-            { shadowColor: isDarkMode ? "transparent" : "#026e02" },
+            { shadowColor: isDarkMode ? "transparent" : "#026e02", minHeight: touchTarget("minHeight") },
             pressed && styles.saveButtonPressed,
           ]}
         >
           <LinearGradient
             colors={isDarkMode ? ["#80cbc4", "#004d40"] : ["#67fc67", "#026e02"]}
-            style={styles.saveGradient}
+            style={[styles.saveGradient, { paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight"), justifyContent: "center" }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.saveButtonText}>
+            <Text style={[styles.saveButtonText, { fontSize: fontSize("md") }]}>
               {isEditMode ? "Update Medication" : "Save Medication"}
             </Text>
           </LinearGradient>
@@ -325,8 +302,6 @@ const MedicationAdd = () => {
     </View>
   );
 };
-
-export default MedicationAdd;
 
 const styles = StyleSheet.create({
   saveButton: {
@@ -345,13 +320,11 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   saveGradient: {
-    paddingVertical: 15,
     alignItems: "center",
     justifyContent: "center",
   },
   saveButtonText: {
     color: "white",
-    fontSize: 18,
     fontFamily: "ComicBold",
   },
   timingsContainer: {
@@ -362,3 +335,5 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
 });
+
+export default MedicationAdd;

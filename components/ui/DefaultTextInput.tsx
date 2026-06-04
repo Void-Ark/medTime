@@ -7,12 +7,14 @@ import {
 } from "react-native";
 import React from "react";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 
 export interface DefaultTextInputProps extends TextInputProps {
   title: string;
 }
 const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
   const { theme, isDarkMode } = useAppTheme();
+  const { fontSize, touchTarget } = useAccessibility();
 
   const styles = StyleSheet.create({
     container: {
@@ -24,7 +26,7 @@ const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
       left: 15,
       backgroundColor: theme.background,
       paddingHorizontal: 8,
-      fontSize: 14,
+      fontSize: fontSize("xs"),
       fontFamily: "ComicBold",
       borderRadius: 15,
       color: theme.subText,
@@ -32,10 +34,11 @@ const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
     inputText: {
       backgroundColor: theme.inputBg,
       color: theme.text,
-      paddingHorizontal: 15,
-      paddingVertical: 12,
+      paddingHorizontal: touchTarget("paddingH") / 1.5,
+      paddingVertical: touchTarget("paddingV") / 1.2,
+      minHeight: touchTarget("minHeight"),
       borderRadius: 12,
-      fontSize: 16,
+      fontSize: fontSize("sm"),
       fontFamily: "ComicBold",
       shadowColor: "#000",
       shadowOpacity: isDarkMode ? 0.2 : 0.05,
@@ -63,3 +66,4 @@ const DefaultTextInput: React.FC<DefaultTextInputProps> = (props) => {
 };
 
 export default DefaultTextInput;
+

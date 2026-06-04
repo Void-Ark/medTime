@@ -18,6 +18,7 @@ import Entypo from "@expo/vector-icons/Entypo";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 import { getHistory } from "@/storage/history";
 import { isMedicineScheduleEnded } from "@/utils/medicineUtils";
 
@@ -30,6 +31,7 @@ const Medications = () => {
       : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
+  const { fontSize, touchTarget, iconSize } = useAccessibility();
   const { medicines, removeMed, refresh } = useMedicines();
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
 
@@ -95,10 +97,10 @@ const Medications = () => {
       <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: isEnded ? (isDarkMode ? "#37474f" : "#ddd") : theme.cardBorder, borderWidth: isDarkMode ? 1 : (isEnded ? 1 : 0), opacity: isEnded ? 0.7 : 1.0 }]}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* Medication Icon or Picture */}
-          <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f1fdf1" }]}>
+          <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f1fdf1", width: fontSize("lg") * 2.5, height: fontSize("lg") * 2.5, borderRadius: (fontSize("lg") * 2.5) / 2 }]}>
             {isEnded && (
               <View style={styles.endedOverlay}>
-                <FontAwesome6 name="circle-check" size={14} color="white" />
+                <FontAwesome6 name="circle-check" size={fontSize("xs")} color="white" />
               </View>
             )}
             {item.imageUrl ? (
@@ -114,7 +116,7 @@ const Medications = () => {
                     ? "syringe"
                     : "prescription-bottle"
                 }
-                size={24}
+                size={fontSize("lg")}
                 color={isDarkMode ? "#80cbc4" : "#026e02"}
               />
             )}
@@ -123,20 +125,20 @@ const Medications = () => {
           {/* Details */}
           <View style={styles.medInfo}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1}>
+              <Text style={[styles.medName, { color: theme.text, fontSize: fontSize("md") }]} numberOfLines={1}>
                 {item.name}
               </Text>
               {isEnded && (
                 <View style={[styles.endedBadge, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f5f5f5", borderColor: isDarkMode ? "#455a64" : "#bbb" }]}>
-                  <Text style={[styles.endedBadgeText, { color: isDarkMode ? "#90a4ae" : "#777" }]}>Ended</Text>
+                  <Text style={[styles.endedBadgeText, { color: isDarkMode ? "#90a4ae" : "#777", fontSize: fontSize("xs") - 2 }]}>Ended</Text>
                 </View>
               )}
             </View>
-            <Text style={[styles.medDetails, { color: theme.subText }]}>
+            <Text style={[styles.medDetails, { color: theme.subText, fontSize: fontSize("sm") }]}>
               {item.dosage} • {item.frequency}x daily
             </Text>
-            <Text style={[styles.scheduleText, { color: theme.subText }]} numberOfLines={1}>
-              <FontAwesome6 name="calendar-days" size={12} color={isDarkMode ? "#b0bec5" : "#666"} />{" "}
+            <Text style={[styles.scheduleText, { color: theme.subText, fontSize: fontSize("xs") }]} numberOfLines={1}>
+              <FontAwesome6 name="calendar-days" size={fontSize("xs")} color={isDarkMode ? "#b0bec5" : "#666"} />{" "}
               {getScheduleText(item)}
             </Text>
           </View>
@@ -145,7 +147,7 @@ const Medications = () => {
         {/* Stock & Timing Info */}
         <View style={[styles.footerRow, { borderTopColor: theme.border }]}>
           <View style={[styles.stockBadge, { backgroundColor: isDarkMode ? "#1b301c" : "#eafcea" }]}>
-            <Text style={[styles.stockText, { color: isDarkMode ? "#81c784" : "#026e02" }]}>
+            <Text style={[styles.stockText, { color: isDarkMode ? "#81c784" : "#026e02", fontSize: fontSize("xs") }]}>
               {item.stockCount} doses available
             </Text>
           </View>
@@ -159,12 +161,16 @@ const Medications = () => {
                 {
                   backgroundColor: isDarkMode ? "#122513" : "#f1fdf1",
                   borderColor: isDarkMode ? "#254627" : "#a5daa5",
+                  paddingVertical: touchTarget("paddingV") / 2,
+                  paddingHorizontal: touchTarget("paddingH") / 1.5,
+                  minHeight: touchTarget("minHeight") * 0.8,
+                  justifyContent: "center",
                 },
               ]}
               onPress={() => router.push(`/add?id=${item.id}`)}
             >
-              <FontAwesome6 name="pen" size={14} color={isDarkMode ? "#81c784" : "#026e02"} />
-              <Text style={[styles.editBtnText, { color: isDarkMode ? "#81c784" : "#026e02" }]}>Edit</Text>
+              <FontAwesome6 name="pen" size={fontSize("xs")} color={isDarkMode ? "#81c784" : "#026e02"} />
+              <Text style={[styles.editBtnText, { color: isDarkMode ? "#81c784" : "#026e02", fontSize: fontSize("xs") }]}>Edit</Text>
             </Pressable>
 
             <Pressable
@@ -174,12 +180,16 @@ const Medications = () => {
                 {
                   backgroundColor: isDarkMode ? "#2d1c1c" : "#ffebee",
                   borderColor: isDarkMode ? "#4b2222" : "#ffcdd2",
+                  paddingVertical: touchTarget("paddingV") / 2,
+                  paddingHorizontal: touchTarget("paddingH") / 1.5,
+                  minHeight: touchTarget("minHeight") * 0.8,
+                  justifyContent: "center",
                 },
               ]}
               onPress={() => handleDelete(item.id, item.name)}
             >
-              <FontAwesome6 name="trash-can" size={14} color={isDarkMode ? "#ff8a80" : "#c62828"} />
-              <Text style={[styles.deleteBtnText, { color: isDarkMode ? "#ff8a80" : "#c62828" }]}>Delete</Text>
+              <FontAwesome6 name="trash-can" size={fontSize("xs")} color={isDarkMode ? "#ff8a80" : "#c62828"} />
+              <Text style={[styles.deleteBtnText, { color: isDarkMode ? "#ff8a80" : "#c62828", fontSize: fontSize("xs") }]}>Delete</Text>
             </Pressable>
           </View>
         </View>
@@ -202,11 +212,11 @@ const Medications = () => {
             style={styles.backButton}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
-            <Entypo name="chevron-left" size={32} color="#ffffff" />
+            <Entypo name="chevron-left" size={fontSize("xl") * 1.2} color="#ffffff" />
           </Pressable>
-          <Text style={styles.headerTitle}>My Medications</Text>
-          <Pressable onPress={() => router.push("/add")}>
-            <Entypo name="plus" size={32} color="#ffffff" />
+          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>My Medications</Text>
+          <Pressable onPress={() => router.push("/add")} style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }}>
+            <Entypo name="plus" size={fontSize("xl") * 1.2} color="#ffffff" />
           </Pressable>
         </View>
       </LinearGradient>
@@ -221,13 +231,13 @@ const Medications = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <FontAwesome6 name="prescription-bottle" size={80} color={isDarkMode ? "#00796b" : "#a5daa5"} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>No medications added yet.</Text>
+          <FontAwesome6 name="prescription-bottle" size={iconSize("hero")} color={isDarkMode ? "#00796b" : "#a5daa5"} />
+          <Text style={[styles.emptyText, { color: theme.text, fontSize: fontSize("md") }]}>No medications added yet.</Text>
           <Pressable
-            style={styles.addMedBtn}
+            style={[styles.addMedBtn, { minHeight: touchTarget("minHeight"), paddingVertical: touchTarget("paddingV"), paddingHorizontal: touchTarget("paddingH"), justifyContent: "center", alignItems: "center" }]}
             onPress={() => router.push("/add")}
           >
-            <Text style={styles.addMedBtnText}>Add Medication</Text>
+            <Text style={[styles.addMedBtnText, { fontSize: fontSize("md") }]}>Add Medication</Text>
           </Pressable>
         </View>
       )}
@@ -253,7 +263,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "white",
-    fontSize: 22,
     fontFamily: "ComicBold",
   },
   listContent: {
@@ -271,9 +280,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   medIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 15,
@@ -288,15 +294,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   medName: {
-    fontSize: 18,
     fontFamily: "ComicBold",
   },
   medDetails: {
-    fontSize: 14,
     marginTop: 2,
   },
   scheduleText: {
-    fontSize: 12,
     marginTop: 4,
   },
   footerRow: {
@@ -313,7 +316,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   stockText: {
-    fontSize: 12,
     fontFamily: "ComicBold",
   },
   endedOverlay: {
@@ -332,7 +334,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   endedBadgeText: {
-    fontSize: 10,
     fontFamily: "ComicBold",
   },
   actionsContainer: {
@@ -342,20 +343,16 @@ const styles = StyleSheet.create({
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
     gap: 4,
   },
   editBtn: {},
   editBtnText: {
-    fontSize: 12,
     fontFamily: "ComicBold",
   },
   deleteBtn: {},
   deleteBtnText: {
-    fontSize: 12,
     fontFamily: "ComicBold",
   },
   emptyContainer: {
@@ -365,21 +362,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 16,
     textAlign: "center",
     marginTop: 15,
     fontFamily: "ComicBold",
   },
   addMedBtn: {
     backgroundColor: "#026e02",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
     borderRadius: 12,
     marginTop: 20,
   },
   addMedBtnText: {
     color: "white",
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
 });

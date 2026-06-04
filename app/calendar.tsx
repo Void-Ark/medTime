@@ -20,6 +20,7 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getHistory } from "@/storage/history";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 
 export interface MedInstance {
   instanceId: string;
@@ -39,6 +40,7 @@ const Calendar = () => {
       : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
+  const { fontSize, touchTarget, iconSize } = useAccessibility();
 
   const { medicines, takeMed, refresh } = useMedicines();
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
@@ -150,20 +152,14 @@ const Calendar = () => {
           return diffMs >= -windowMs && diffMs <= windowMs;
         });
 
-        // Determine intake availability
+        // Determine availability
         let canTake = false;
         let statusText: "Taken" | "Locked" | "Take" | "Missed" = "Take";
 
         if (isInstanceTaken) {
           statusText = "Taken";
-        } else if (!isToday) {
-          if (selectedDate < now) {
-            statusText = "Missed";
-          } else {
-            statusText = "Locked";
-          }
-        } else {
-          // Today
+        } else if (isToday) {
+          // If date is today, check active window (T - 1h to T + 1h)
           const windowStartTime = new Date(scheduledTime.getTime() - 60 * 60 * 1000);
           const windowEndTime = new Date(scheduledTime.getTime() + 60 * 60 * 1000);
           if (now < windowStartTime) {
@@ -174,6 +170,12 @@ const Calendar = () => {
           } else {
             statusText = "Missed";
           }
+        } else if (selectedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+          // Past dates not taken are marked missed
+          statusText = "Missed";
+        } else {
+          // Future dates are locked
+          statusText = "Locked";
         }
 
         instances.push({
@@ -191,12 +193,12 @@ const Calendar = () => {
     instances.sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
 
     setFilteredMeds(instances);
-  }, [selectedDate, medicines, historyLogs]);
+  }, [medicines, historyLogs, selectedDate]);
 
-  // Generate 7 days of the week around today
+  // Find 7 days of current week to render in horizontal strip
   const getWeekDays = () => {
+    const week: Date[] = [];
     const today = new Date();
-    const week = [];
     // Find Sunday of current week
     const startOfWeek = new Date(today);
     startOfWeek.setHours(0, 0, 0, 0);
@@ -246,13 +248,15 @@ const Calendar = () => {
     const isLocked = item.statusText === "Locked";
     const isMissed = item.statusText === "Missed";
 
+    const medIconSize = fontSize("lg") * 2.5;
+
     return (
-      <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }, isTaken && styles.medCardTaken]}>
-        <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f1fdf1" }]}>
+      <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0, minHeight: touchTarget("minHeight") + 10 }, isTaken && styles.medCardTaken]}>
+        <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f1fdf1", width: medIconSize, height: medIconSize, borderRadius: medIconSize / 2 }]}>
           {item.medicine.imageUrl ? (
             <Image
               source={{ uri: item.medicine.imageUrl }}
-              style={{ width: "100%", height: "100%", borderRadius: 12, resizeMode: "cover" }}
+              style={{ width: "100%", height: "100%", borderRadius: medIconSize / 2, resizeMode: "cover" }}
             />
           ) : (
             <FontAwesome6
@@ -265,19 +269,19 @@ const Calendar = () => {
                   ? "syringe"
                   : "prescription-bottle"
               }
-              size={28}
+              size={fontSize("lg")}
               color={isTaken ? "#81c784" : isMissed ? "#e57373" : "#026e02"}
             />
           )}
         </View>
         <View style={styles.medInfo}>
-          <Text style={[styles.medName, { color: theme.text }, isTaken && styles.textStrikethrough]}>
+          <Text style={[styles.medName, { color: theme.text, fontSize: fontSize("md") }, isTaken && styles.textStrikethrough]}>
             {item.medicine.name}
           </Text>
-          <Text style={[styles.medDetails, { color: theme.subText }]}>
+          <Text style={[styles.medDetails, { color: theme.subText, fontSize: fontSize("sm") }]}>
             {item.medicine.dosage} • Scheduled: {item.scheduledTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </Text>
-          {item.medicine.notes && <Text style={[styles.medNotes, { color: theme.subText }]}>Note: {item.medicine.notes}</Text>}
+          {item.medicine.notes && <Text style={[styles.medNotes, { color: theme.subText, fontSize: fontSize("xs") }]}>Note: {item.medicine.notes}</Text>}
         </View>
 
         <Pressable
@@ -286,6 +290,10 @@ const Calendar = () => {
             {
               backgroundColor: isDarkMode ? "#1e2922" : "#eafcea",
               borderColor: isDarkMode ? "#1e5e3a" : "#a5daa5",
+              paddingVertical: touchTarget("paddingV") / 2,
+              paddingHorizontal: touchTarget("paddingH") / 1.5,
+              minHeight: touchTarget("minHeight") * 0.8,
+              justifyContent: "center",
             },
             isTaken && styles.checkButtonActive,
             isLocked && [styles.checkButtonLocked, { backgroundColor: theme.border, borderColor: theme.border }],
@@ -295,12 +303,12 @@ const Calendar = () => {
           disabled={!item.canTake}
         >
           {isTaken ? (
-            <FontAwesome6 name="check" size={14} color="white" />
+            <FontAwesome6 name="check" size={fontSize("xs")} color="white" />
           ) : (
             <Text
               style={[
                 styles.checkButtonText,
-                { color: isDarkMode ? "#81c784" : "#026e02" },
+                { color: isDarkMode ? "#81c784" : "#026e02", fontSize: fontSize("xs") },
                 isLocked && [styles.checkTextLocked, { color: theme.subText }],
                 isMissed && [styles.checkTextMissed, { color: isDarkMode ? "#e57373" : "#c62828" }],
               ]}
@@ -319,10 +327,10 @@ const Calendar = () => {
       <LinearGradient colors={isDarkMode ? ["#37474f", "#212121"] : ["#67fc67", "#026e02"]}>
         <View style={{ width: "100%", height: statusBarHeight }}></View>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
-            <Entypo name="chevron-left" size={32} color="#ffffff" />
+          <Pressable onPress={() => router.back()} style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }}>
+            <Entypo name="chevron-left" size={fontSize("xl") * 1.2} color="#ffffff" />
           </Pressable>
-          <Text style={styles.headerTitle}>Schedule Calendar</Text>
+          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>Schedule Calendar</Text>
           <View style={{ width: 32 }} />
         </View>
 
@@ -341,11 +349,18 @@ const Calendar = () => {
             const dayNum = day.getDate();
             const isToday = day.toDateString() === new Date().toDateString();
 
+            const calculatedWidth = fontSize("lg") * 2.8;
+            const calculatedHeight = fontSize("lg") * 3.6;
+
             return (
               <Pressable
                 key={idx}
                 style={[
                   styles.dateBox,
+                  {
+                    width: calculatedWidth,
+                    height: calculatedHeight,
+                  },
                   isSelected && styles.dateBoxSelected,
                   isToday && !isSelected && styles.dateBoxToday,
                 ]}
@@ -354,6 +369,7 @@ const Calendar = () => {
                 <Text
                   style={[
                     styles.dateDayName,
+                    { fontSize: fontSize("xs") },
                     isSelected && styles.textWhite,
                     isToday && !isSelected && styles.textToday,
                   ]}
@@ -363,6 +379,7 @@ const Calendar = () => {
                 <Text
                   style={[
                     styles.dateDayNum,
+                    { fontSize: fontSize("md") },
                     isSelected && styles.textWhite,
                     isToday && !isSelected && styles.textToday,
                   ]}
@@ -378,7 +395,7 @@ const Calendar = () => {
       {/* Medication List */}
       <View style={styles.body}>
         <View style={styles.bodyHeader}>
-          <Text style={[styles.bodyTitle, { color: theme.text }]}>
+          <Text style={[styles.bodyTitle, { color: theme.text, fontSize: fontSize("md") }]}>
             {selectedDate.toDateString() === new Date().toDateString()
               ? "Today's Schedule"
               : selectedDate.toLocaleDateString(undefined, {
@@ -387,7 +404,7 @@ const Calendar = () => {
                   day: "numeric",
                 })}
           </Text>
-          <Text style={[styles.countBadge, { backgroundColor: isDarkMode ? "#152e1f" : "#e8f5e9", color: isDarkMode ? "#81c784" : "#2e7d32" }]}>{filteredMeds.length} Doses</Text>
+          <Text style={[styles.countBadge, { backgroundColor: isDarkMode ? "#152e1f" : "#e8f5e9", color: isDarkMode ? "#81c784" : "#2e7d32", fontSize: fontSize("xs") }]}>{filteredMeds.length} Doses</Text>
         </View>
 
         {filteredMeds.length > 0 ? (
@@ -401,10 +418,10 @@ const Calendar = () => {
           <View style={styles.emptyContainer}>
             <FontAwesome6
               name="house-medical-circle-check"
-              size={80}
+              size={iconSize("hero")}
               color={isDarkMode ? "#00796b" : "#a5daa5"}
             />
-            <Text style={[styles.emptyText, { color: theme.text }]}>No medications scheduled.</Text>
+            <Text style={[styles.emptyText, { color: theme.text, fontSize: fontSize("md") }]}>No medications scheduled.</Text>
           </View>
         )}
       </View>
@@ -427,7 +444,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "white",
-    fontSize: 22,
     fontFamily: "ComicBold",
   },
   dateSelector: {
@@ -437,8 +453,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   dateBox: {
-    width: 55,
-    height: 70,
     backgroundColor: "rgba(255,255,255,0.25)",
     borderRadius: 15,
     alignItems: "center",
@@ -458,12 +472,10 @@ const styles = StyleSheet.create({
     borderColor: "white",
   },
   dateDayName: {
-    fontSize: 12,
     color: "rgba(255,255,255,0.8)",
     fontFamily: "ComicBold",
   },
   dateDayNum: {
-    fontSize: 18,
     color: "white",
     fontFamily: "ComicBold",
     marginTop: 2,
@@ -487,16 +499,12 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   bodyTitle: {
-    fontSize: 18,
     fontFamily: "ComicBold",
   },
   countBadge: {
-    backgroundColor: "#e8f5e9",
-    color: "#2e7d32",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    fontSize: 12,
     fontWeight: "bold",
   },
   listContent: {
@@ -518,9 +526,6 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   medIconContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 15,
@@ -529,7 +534,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   medName: {
-    fontSize: 17,
     fontFamily: "ComicBold",
   },
   textStrikethrough: {
@@ -537,11 +541,9 @@ const styles = StyleSheet.create({
     color: "#888",
   },
   medDetails: {
-    fontSize: 13,
     marginTop: 2,
   },
   medNotes: {
-    fontSize: 11,
     marginTop: 4,
     fontStyle: "italic",
   },
@@ -549,8 +551,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#eafcea",
     borderColor: "#a5daa5",
     borderWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
     borderRadius: 20,
     minWidth: 60,
     alignItems: "center",
@@ -568,8 +568,6 @@ const styles = StyleSheet.create({
     borderColor: "#ffcdd2",
   },
   checkButtonText: {
-    color: "#026e02",
-    fontSize: 12,
     fontFamily: "ComicBold",
   },
   checkTextLocked: {},
@@ -582,7 +580,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   emptyText: {
-    fontSize: 16,
     textAlign: "center",
     marginTop: 15,
     fontFamily: "ComicBold",

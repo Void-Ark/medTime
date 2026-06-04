@@ -3,6 +3,7 @@ import { useFonts } from "expo-font";
 import React, { useEffect } from "react";
 import { overrideTextDefaultFont } from "@/providers/fontProvider";
 import { ThemeProvider } from "@/providers/themeProvider";
+import { AccessibilityProvider } from "@/providers/accessibilityProvider";
 import * as Notifications from "expo-notifications";
 import { migrateFromAsyncStorage } from "@/storage/db";
 
@@ -52,17 +53,20 @@ export default function Layout() {
   }
 
   return (
-    <ThemeProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="auth" />
-        <Stack.Screen name="home" />
-        <Stack.Screen name="add" />
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="medications" />
-        <Stack.Screen name="calendar" />
-        <Stack.Screen name="history" />
-      </Stack>
-    </ThemeProvider>
+    <AccessibilityProvider>
+      <ThemeProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="home" />
+          <Stack.Screen name="add" />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="medications" />
+          <Stack.Screen name="calendar" />
+          <Stack.Screen name="history" />
+        </Stack>
+      </ThemeProvider>
+    </AccessibilityProvider>
   );
 }
+

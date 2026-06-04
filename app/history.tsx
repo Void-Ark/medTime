@@ -22,6 +22,7 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 import { useMedicines } from "@/hooks/useMedicines";
 
 const History = () => {
@@ -33,6 +34,7 @@ const History = () => {
       : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
+  const { fontSize, touchTarget, iconSize } = useAccessibility();
   const { medicines, refresh: refreshMedicines } = useMedicines();
 
   const [logs, setLogs] = useState<IntakeLog[]>([]);
@@ -116,19 +118,19 @@ const History = () => {
           },
         ]}
       >
-        <View style={[styles.logCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
+        <View style={[styles.logCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0, minHeight: touchTarget("minHeight") + 10 }]}>
           <View style={styles.iconContainer}>
-            <FontAwesome6 name="circle-check" size={24} color="#026e02" />
+            <FontAwesome6 name="circle-check" size={fontSize("lg")} color="#026e02" />
           </View>
           <View style={styles.infoContainer}>
-            <Text style={[styles.medName, { color: theme.text }]}>{item.medicineName}</Text>
-            <Text style={[styles.dosageText, { color: theme.subText }]}>Dosage: {item.dosage}</Text>
-            <Text style={[styles.timestampText, { color: theme.subText }]}>
+            <Text style={[styles.medName, { color: theme.text, fontSize: fontSize("md") }]}>{item.medicineName}</Text>
+            <Text style={[styles.dosageText, { color: theme.subText, fontSize: fontSize("sm") }]}>Dosage: {item.dosage}</Text>
+            <Text style={[styles.timestampText, { color: theme.subText, fontSize: fontSize("xs") }]}>
               {dateString} • {timeString}
             </Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? "#1b301c" : "#e8f5e9" }]}>
-            <Text style={[styles.badgeText, { color: isDarkMode ? "#81c784" : "#2e7d32" }]}>Taken</Text>
+            <Text style={[styles.badgeText, { color: isDarkMode ? "#81c784" : "#2e7d32", fontSize: fontSize("xs") }]}>Taken</Text>
           </View>
         </View>
       </Pressable>
@@ -143,15 +145,15 @@ const History = () => {
         <View style={styles.header}>
           <Pressable
             onPress={() => router.back()}
-            style={styles.backButton}
+            style={[styles.backButton, { minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }]}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
-            <Entypo name="chevron-left" size={32} color="#ffffff" />
+            <Entypo name="chevron-left" size={fontSize("xl") * 1.2} color="#ffffff" />
           </Pressable>
-          <Text style={styles.headerTitle}>Intake History</Text>
+          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>Intake History</Text>
           {logs.length > 0 ? (
-            <Pressable onPress={handleClear}>
-              <Entypo name="trash" size={24} color="#ffffff" />
+            <Pressable onPress={handleClear} style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }}>
+              <Entypo name="trash" size={fontSize("lg")} color="#ffffff" />
             </Pressable>
           ) : (
             <View style={{ width: 24 }} />
@@ -168,8 +170,8 @@ const History = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <FontAwesome6 name="book-medical" size={80} color={isDarkMode ? "#00796b" : "#a5daa5"} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>No medication history logged yet.</Text>
+          <FontAwesome6 name="book-medical" size={iconSize("hero")} color={isDarkMode ? "#00796b" : "#a5daa5"} />
+          <Text style={[styles.emptyText, { color: theme.text, fontSize: fontSize("md") }]}>No medication history logged yet.</Text>
         </View>
       )}
       {/* Detailed Intake History Modal */}
@@ -183,9 +185,9 @@ const History = () => {
           <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
             {/* Header */}
             <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? "#37474f" : "#eee" }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Intake Details</Text>
+              <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Intake Details</Text>
               <Pressable style={styles.closeIconButton} onPress={() => setIsDetailsModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color={theme.text} />
+                <MaterialIcons name="close" size={fontSize("lg")} color={theme.text} />
               </Pressable>
             </View>
 
@@ -205,7 +207,7 @@ const History = () => {
                       style={styles.modalImage}
                     />
                     <View style={styles.zoomIconIndicator}>
-                      <MaterialIcons name="zoom-in" size={20} color="white" />
+                      <MaterialIcons name="zoom-in" size={fontSize("sm")} color="white" />
                     </View>
                   </Pressable>
                 ) : (
@@ -220,23 +222,23 @@ const History = () => {
                           ? "syringe"
                           : "prescription-bottle"
                       }
-                      size={60}
+                      size={iconSize("lg")}
                       color={isDarkMode ? "#80cbc4" : "#026e02"}
                     />
                   </View>
                 )}
 
                 {/* Details Section */}
-                <Text style={[styles.modalMedName, { color: theme.text }]} numberOfLines={1}>
+                <Text style={[styles.modalMedName, { color: theme.text, fontSize: fontSize("xl") }]} numberOfLines={1}>
                   {selectedLog.medicineName}
                 </Text>
-                <Text style={[styles.modalMedDosage, { color: theme.subText }]}>
+                <Text style={[styles.modalMedDosage, { color: theme.subText, fontSize: fontSize("md") }]}>
                   Prescribed Dosage: {selectedLog.dosage}
                 </Text>
 
                 {/* All Intake History Timeline */}
                 <View style={styles.historyListSection}>
-                  <Text style={[styles.historySectionTitle, { color: theme.text }]}>
+                  <Text style={[styles.historySectionTitle, { color: theme.text, fontSize: fontSize("sm") }]}>
                     All Intake History ({medTakeHistory.length})
                   </Text>
                   
@@ -250,8 +252,8 @@ const History = () => {
 
                       return (
                         <View style={[styles.historyRow, { borderBottomColor: isDarkMode ? "#37474f" : "#eee" }]}>
-                          <MaterialIcons name="check-circle" size={18} color={isDarkMode ? "#81c784" : "#2e7d32"} />
-                          <Text style={[styles.historyRowText, { color: theme.text }]}>
+                          <MaterialIcons name="check-circle" size={fontSize("sm")} color={isDarkMode ? "#81c784" : "#2e7d32"} />
+                          <Text style={[styles.historyRowText, { color: theme.text, fontSize: fontSize("xs") }]}>
                             {dStr} at {tStr}
                           </Text>
                         </View>
@@ -275,11 +277,11 @@ const History = () => {
             >
               <LinearGradient
                 colors={isDarkMode ? ["#80cbc4", "#004d40"] : ["#67fc67", "#026e02"]}
-                style={styles.modalCloseGradient}
+                style={[styles.modalCloseGradient, { paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight"), justifyContent: "center" }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={[styles.modalCloseText, { fontSize: fontSize("sm") }]}>Close</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -295,7 +297,7 @@ const History = () => {
       >
         <View style={styles.zoomOverlay}>
           <Pressable style={styles.zoomCloseButton} onPress={() => setIsZoomModalVisible(false)}>
-            <MaterialIcons name="close" size={30} color="white" />
+            <MaterialIcons name="close" size={fontSize("xl")} color="white" />
           </Pressable>
           
           {selectedMed?.imageUrl && (
@@ -314,7 +316,7 @@ const History = () => {
           )}
           
           <View style={styles.zoomTip}>
-            <Text style={styles.zoomTipText}>Pinch to Zoom / Pan to explore</Text>
+            <Text style={[styles.zoomTipText, { fontSize: fontSize("xs") }]}>Pinch to Zoom / Pan to explore</Text>
           </View>
         </View>
       </Modal>
@@ -340,7 +342,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "white",
-    fontSize: 22,
     fontFamily: "ComicBold",
   },
   listContent: {
@@ -365,15 +366,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   medName: {
-    fontSize: 18,
     fontFamily: "ComicBold",
   },
   dosageText: {
-    fontSize: 14,
     marginTop: 2,
   },
   timestampText: {
-    fontSize: 12,
     marginTop: 4,
   },
   statusBadge: {
@@ -382,8 +380,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: "bold",
+    fontFamily: "ComicBold",
   },
   emptyContainer: {
     flex: 1,
@@ -392,7 +389,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 16,
     textAlign: "center",
     marginTop: 15,
     fontFamily: "ComicBold",
@@ -424,7 +420,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   modalTitle: {
-    fontSize: 20,
     fontFamily: "ComicBold",
   },
   closeIconButton: {
@@ -456,13 +451,11 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   modalMedName: {
-    fontSize: 22,
     fontFamily: "ComicBold",
     marginTop: 4,
     textAlign: "center",
   },
   modalMedDosage: {
-    fontSize: 14,
     fontFamily: "ComicRegular",
     textAlign: "center",
   },
@@ -473,7 +466,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   historySectionTitle: {
-    fontSize: 15,
     fontFamily: "ComicBold",
     marginBottom: 8,
   },
@@ -488,7 +480,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
   },
   historyRowText: {
-    fontSize: 13,
     fontFamily: "ComicRegular",
   },
   modalCloseBtn: {
@@ -498,13 +489,11 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   modalCloseGradient: {
-    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   modalCloseText: {
     color: "white",
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
   zoomIconIndicator: {
@@ -523,7 +512,6 @@ const styles = StyleSheet.create({
   },
   zoomCloseButton: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 30,
     right: 20,
     zIndex: 10,
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -550,7 +538,6 @@ const styles = StyleSheet.create({
   },
   zoomTipText: {
     color: "white",
-    fontSize: 13,
     fontFamily: "ComicRegular",
   },
 });

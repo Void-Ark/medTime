@@ -3,6 +3,7 @@ import React, { Dispatch, SetStateAction, useState } from "react";
 import Entypo from "@expo/vector-icons/Entypo";
 import RNDateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 
 interface TimeBoxProps {
   time: Date;
@@ -19,6 +20,7 @@ const TimeBox: React.FC<TimeBoxProps> = ({
 }) => {
   const [showPicker, setShowPicker] = useState(false);
   const { theme, isDarkMode } = useAppTheme();
+  const { fontSize, touchTarget } = useAccessibility();
 
   const timeDate = typeof time === "string" ? new Date(time) : time;
 
@@ -55,6 +57,9 @@ const TimeBox: React.FC<TimeBoxProps> = ({
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 1 },
           elevation: 1,
+          minHeight: touchTarget("minHeight") * 0.8,
+          justifyContent: "center",
+          alignItems: "center",
         }}
       >
         <Pressable
@@ -63,15 +68,16 @@ const TimeBox: React.FC<TimeBoxProps> = ({
             flexDirection: "row",
             justifyContent: "center",
             alignItems: "center",
+            minHeight: "100%",
           }}
           onPress={() => setShowPicker(!showPicker)}
         >
-          <Text style={{ fontSize: 16, fontFamily: "ComicBold", color: theme.text }}>
+          <Text style={{ fontSize: fontSize("sm"), fontFamily: "ComicBold", color: theme.text }}>
             {hour}:{minute} {ampm}
           </Text>
           <Entypo
             name="edit"
-            size={18}
+            size={fontSize("sm")}
             color={isDarkMode ? "#80cbc4" : "green"}
             style={{ paddingHorizontal: 10 }}
           />
@@ -100,9 +106,9 @@ const TimeBox: React.FC<TimeBoxProps> = ({
                 />
                 <Pressable
                   onPress={() => setShowPicker(false)}
-                  style={[styles.closeButton, { backgroundColor: isDarkMode ? "#004d40" : "#026e02" }]}
+                  style={[styles.closeButton, { backgroundColor: isDarkMode ? "#004d40" : "#026e02", minHeight: touchTarget("minHeight"), paddingVertical: touchTarget("paddingV") }]}
                 >
-                  <Text style={styles.closeButtonText}>Done</Text>
+                  <Text style={[styles.closeButtonText, { fontSize: fontSize("sm") }]}>Done</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -152,14 +158,14 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   closeButton: {
-    padding: 12,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 15,
+    justifyContent: "center",
   },
   closeButtonText: {
     color: "white",
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
 });
+

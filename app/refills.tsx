@@ -23,6 +23,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 import { getHistory } from "@/storage/history";
 import { isMedicineScheduleEnded } from "@/utils/medicineUtils";
 
@@ -35,6 +36,7 @@ const RefillTracker = () => {
       : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
+  const { fontSize, touchTarget, iconSize } = useAccessibility();
   const { medicines, refillMed, updateStock, refresh } = useMedicines();
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
 
@@ -64,7 +66,6 @@ const RefillTracker = () => {
       loadAllData();
     }, [])
   );
-
 
   const getLowStockCount = () => {
     return activeMedicines.filter((m) => {
@@ -121,7 +122,6 @@ const RefillTracker = () => {
     }
   };
 
-
   const renderMedicineItem = ({ item }: { item: Medicine }) => {
     const threshold = item.refillThreshold !== undefined ? item.refillThreshold : 5;
     const isLowStock = item.stockCount <= threshold;
@@ -145,11 +145,13 @@ const RefillTracker = () => {
       badgeTextColor = isDarkMode ? "#ffb74d" : "#ef6c00";
     }
 
+    const iconBoxSize = fontSize("lg") * 2.2;
+
     return (
-      <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0 }]}>
+      <View style={[styles.medCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0, minHeight: touchTarget("minHeight") + 10 }]}>
         <View style={styles.cardHeader}>
           {/* Visual Icon */}
-          <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f5f5f5" }]}>
+          <View style={[styles.medIconContainer, { backgroundColor: isDarkMode ? "#2e2e2e" : "#f5f5f5", width: iconBoxSize, height: iconBoxSize, borderRadius: iconBoxSize / 2 }]}>
             {item.imageUrl ? (
               <Image source={{ uri: item.imageUrl }} style={styles.medImage} />
             ) : (
@@ -163,7 +165,7 @@ const RefillTracker = () => {
                     ? "syringe"
                     : "prescription-bottle"
                 }
-                size={22}
+                size={fontSize("lg")}
                 color={progressBarColor}
               />
             )}
@@ -171,10 +173,10 @@ const RefillTracker = () => {
 
           {/* Core Info */}
           <View style={styles.cardInfo}>
-            <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1}>
+            <Text style={[styles.medName, { color: theme.text, fontSize: fontSize("md") }]} numberOfLines={1}>
               {item.name}
             </Text>
-            <Text style={[styles.medDetails, { color: theme.subText }]}>
+            <Text style={[styles.medDetails, { color: theme.subText, fontSize: fontSize("sm") }]}>
               Dosage Unit: {item.dosage}
             </Text>
           </View>
@@ -186,23 +188,27 @@ const RefillTracker = () => {
               {
                 backgroundColor: isDarkMode ? "#2c2214" : "#fff8e1",
                 borderColor: isDarkMode ? "#573d12" : "#ffe082",
+                paddingVertical: touchTarget("paddingV") / 2,
+                paddingHorizontal: touchTarget("paddingH") / 1.5,
+                minHeight: touchTarget("minHeight") * 0.8,
+                justifyContent: "center",
               },
               pressed && { opacity: 0.8 },
             ]}
             onPress={() => handleOpenRefill(item)}
           >
-            <Ionicons name="add-circle-outline" size={16} color={isDarkMode ? "#ffb74d" : "#f57c00"} />
-            <Text style={[styles.refillTriggerText, { color: isDarkMode ? "#ffb74d" : "#f57c00" }]}>Refill</Text>
+            <Ionicons name="add-circle-outline" size={fontSize("xs")} color={isDarkMode ? "#ffb74d" : "#f57c00"} />
+            <Text style={[styles.refillTriggerText, { color: isDarkMode ? "#ffb74d" : "#f57c00", fontSize: fontSize("xs") }]}>Refill</Text>
           </Pressable>
         </View>
 
         {/* Stock status indicator */}
         <View style={styles.stockStatusContainer}>
           <View style={styles.stockLabelRow}>
-            <Text style={[styles.stockAmountText, { color: theme.text }]}>
+            <Text style={[styles.stockAmountText, { color: theme.text, fontSize: fontSize("sm") }]}>
               Current: <Text style={{ fontFamily: "ComicBold", color: badgeTextColor }}>{item.stockCount} doses</Text>
             </Text>
-            <Text style={[styles.thresholdLabel, { color: theme.subText }]}>
+            <Text style={[styles.thresholdLabel, { color: theme.subText, fontSize: fontSize("xs") }]}>
               Alert if ≤ {threshold}
             </Text>
           </View>
@@ -223,7 +229,7 @@ const RefillTracker = () => {
           {/* Status Badge */}
           <View style={styles.badgeRow}>
             <View style={[styles.statusBadge, { backgroundColor: badgeBg, borderColor: progressBarColor, borderWidth: isDarkMode ? 0.5 : 0 }]}>
-              <Text style={[styles.statusBadgeText, { color: badgeTextColor }]}>
+              <Text style={[styles.statusBadgeText, { color: badgeTextColor, fontSize: fontSize("xs") }]}>
                 {isLowStock ? "Needs Refill ASAP" : (item.stockCount <= threshold * 2 ? "Low Stock Warning" : "Healthy Stock")}
               </Text>
             </View>
@@ -241,10 +247,10 @@ const RefillTracker = () => {
       <LinearGradient colors={isDarkMode ? ["#37474f", "#212121"] : ["#67fc67", "#026e02"]}>
         <View style={{ width: "100%", height: statusBarHeight }}></View>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Entypo name="chevron-left" size={32} color="#ffffff" />
+          <Pressable onPress={() => router.back()} style={[styles.backButton, { minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }]}>
+            <Entypo name="chevron-left" size={fontSize("xl") * 1.2} color="#ffffff" />
           </Pressable>
-          <Text style={styles.headerTitle}>Refill Tracker</Text>
+          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>Refill Tracker</Text>
           <View style={{ width: 32 }}></View>
         </View>
       </LinearGradient>
@@ -252,20 +258,20 @@ const RefillTracker = () => {
       {/* Quick stats widgets */}
       <View style={styles.statsContainer}>
         <View style={[styles.statWidget, { backgroundColor: theme.card }]}>
-          <FontAwesome6 name="prescription-bottle-medical" size={24} color={isDarkMode ? "#80cbc4" : "#026e02"} />
+          <FontAwesome6 name="prescription-bottle-medical" size={fontSize("xl")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
           <View style={styles.statInfo}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{activeMedicines.length}</Text>
-            <Text style={[styles.statLabel, { color: theme.subText }]}>Tracked Meds</Text>
+            <Text style={[styles.statValue, { color: theme.text, fontSize: fontSize("xl") }]}>{activeMedicines.length}</Text>
+            <Text style={[styles.statLabel, { color: theme.subText, fontSize: fontSize("xs") }]}>Tracked Meds</Text>
           </View>
         </View>
 
         <View style={[styles.statWidget, { backgroundColor: theme.card }]}>
-          <MaterialIcons name="error-outline" size={26} color={getLowStockCount() > 0 ? (isDarkMode ? "#e57373" : "#c62828") : (isDarkMode ? "#80cbc4" : "#026e02")} />
+          <MaterialIcons name="error-outline" size={fontSize("xl") * 1.1} color={getLowStockCount() > 0 ? (isDarkMode ? "#e57373" : "#c62828") : (isDarkMode ? "#80cbc4" : "#026e02")} />
           <View style={styles.statInfo}>
-            <Text style={[styles.statValue, { color: getLowStockCount() > 0 ? (isDarkMode ? "#e57373" : "#c62828") : theme.text }]}>
+            <Text style={[styles.statValue, { color: getLowStockCount() > 0 ? (isDarkMode ? "#e57373" : "#c62828") : theme.text, fontSize: fontSize("xl") }]}>
               {getLowStockCount()}
             </Text>
-            <Text style={[styles.statLabel, { color: theme.subText }]}>Low Stock Alerts</Text>
+            <Text style={[styles.statLabel, { color: theme.subText, fontSize: fontSize("xs") }]}>Low Stock Alerts</Text>
           </View>
         </View>
       </View>
@@ -273,17 +279,17 @@ const RefillTracker = () => {
       {/* Search Input Bar */}
       <View style={styles.searchContainer}>
         <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Ionicons name="search" size={20} color={theme.subText} style={styles.searchIcon} />
+          <Ionicons name="search" size={fontSize("md")} color={theme.subText} style={styles.searchIcon} />
           <TextInput
             placeholder="Search medication name..."
             placeholderTextColor={theme.subText}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={[styles.searchInput, { color: theme.text }]}
+            style={[styles.searchInput, { color: theme.text, fontSize: fontSize("sm"), minHeight: touchTarget("minHeight") * 0.8 }]}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")}>
-              <MaterialIcons name="cancel" size={20} color={theme.subText} />
+              <MaterialIcons name="cancel" size={fontSize("md")} color={theme.subText} />
             </Pressable>
           )}
         </View>
@@ -299,13 +305,13 @@ const RefillTracker = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cube-outline" size={80} color={isDarkMode ? "#00796b" : "#a5daa5"} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>
+          <Ionicons name="cube-outline" size={iconSize("hero")} color={isDarkMode ? "#00796b" : "#a5daa5"} />
+          <Text style={[styles.emptyText, { color: theme.text, fontSize: fontSize("md") }]}>
             {searchQuery.length > 0 ? "No matching medications found." : "No tracked medications found."}
           </Text>
           {searchQuery.length === 0 && (
-            <Pressable style={styles.addMedBtn} onPress={() => router.push("/add")}>
-              <Text style={styles.addMedBtnText}>Add Medication</Text>
+            <Pressable style={[styles.addMedBtn, { minHeight: touchTarget("minHeight"), paddingVertical: touchTarget("paddingV"), paddingHorizontal: touchTarget("paddingH"), justifyContent: "center", alignItems: "center" }]} onPress={() => router.push("/add")}>
+              <Text style={[styles.addMedBtnText, { fontSize: fontSize("md") }]}>Add Medication</Text>
             </Pressable>
           )}
         </View>
@@ -325,9 +331,9 @@ const RefillTracker = () => {
           <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
             {/* Modal Header */}
             <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? "#37474f" : "#eee" }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Quick Refill</Text>
+              <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Quick Refill</Text>
               <Pressable style={styles.closeIconButton} onPress={() => setIsModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color={theme.text} />
+                <MaterialIcons name="close" size={fontSize("lg")} color={theme.text} />
               </Pressable>
             </View>
 
@@ -335,10 +341,10 @@ const RefillTracker = () => {
               <ScrollView contentContainerStyle={styles.modalBody}>
                 {/* Details banner */}
                 <View style={[styles.modalMedBanner, { backgroundColor: isDarkMode ? "#2e2e2e" : "#fcfcfc" }]}>
-                  <Text style={[styles.modalMedName, { color: theme.text }]}>
+                  <Text style={[styles.modalMedName, { color: theme.text, fontSize: fontSize("md") }]}>
                     {selectedMed.name}
                   </Text>
-                  <Text style={[styles.modalMedDetails, { color: theme.subText }]}>
+                  <Text style={[styles.modalMedDetails, { color: theme.subText, fontSize: fontSize("xs") }]}>
                     Dosage Unit: {selectedMed.dosage} • Current Stock: {selectedMed.stockCount} doses
                   </Text>
                 </View>
@@ -348,6 +354,7 @@ const RefillTracker = () => {
                   <Pressable
                     style={[
                       styles.tabBtn,
+                      { paddingVertical: touchTarget("paddingV") / 1.5 },
                       modalMode === "refill" && [
                         styles.tabActiveBtn,
                         { backgroundColor: theme.card }
@@ -358,7 +365,7 @@ const RefillTracker = () => {
                     <Text
                       style={[
                         styles.tabText,
-                        { color: modalMode === "refill" ? (isDarkMode ? "#80cbc4" : "#026e02") : theme.text }
+                        { color: modalMode === "refill" ? (isDarkMode ? "#80cbc4" : "#026e02") : theme.text, fontSize: fontSize("xs") }
                       ]}
                     >
                       Refill (Add)
@@ -367,6 +374,7 @@ const RefillTracker = () => {
                   <Pressable
                     style={[
                       styles.tabBtn,
+                      { paddingVertical: touchTarget("paddingV") / 1.5 },
                       modalMode === "set" && [
                         styles.tabActiveBtn,
                         { backgroundColor: theme.card }
@@ -377,7 +385,7 @@ const RefillTracker = () => {
                     <Text
                       style={[
                         styles.tabText,
-                        { color: modalMode === "set" ? (isDarkMode ? "#80cbc4" : "#026e02") : theme.text }
+                        { color: modalMode === "set" ? (isDarkMode ? "#80cbc4" : "#026e02") : theme.text, fontSize: fontSize("xs") }
                       ]}
                     >
                       Set Total Stock
@@ -388,18 +396,18 @@ const RefillTracker = () => {
                 {modalMode === "refill" ? (
                   <>
                     {/* Input quantity */}
-                    <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    <Text style={[styles.inputLabel, { color: theme.text, fontSize: fontSize("sm") }]}>
                       How many doses/units would you like to add?
                     </Text>
                     <View style={styles.inputRow}>
                       <TextInput
-                        style={[styles.modalInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
+                        style={[styles.modalInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, fontSize: fontSize("sm"), minHeight: touchTarget("minHeight") * 0.8, paddingVertical: touchTarget("paddingV") / 2 }]}
                         keyboardType="number-pad"
                         value={refillAmount}
                         onChangeText={setRefillAmount}
                         maxLength={5}
                       />
-                      <Text style={[styles.modalDoseLabel, { color: theme.subText }]}>doses</Text>
+                      <Text style={[styles.modalDoseLabel, { color: theme.subText, fontSize: fontSize("sm") }]}>doses</Text>
                     </View>
 
                     {/* Convenient Presets */}
@@ -417,6 +425,8 @@ const RefillTracker = () => {
                               borderColor: refillAmount === preset 
                                 ? (isDarkMode ? "#80cbc4" : "#026e02") 
                                 : (isDarkMode ? "#444" : "#e0e0e0"),
+                              minHeight: touchTarget("minHeight") * 0.8,
+                              paddingVertical: touchTarget("paddingV") / 2,
                             }
                           ]}
                         >
@@ -426,6 +436,7 @@ const RefillTracker = () => {
                               color: refillAmount === preset 
                                 ? (isDarkMode ? "#80cbc4" : "#026e02") 
                                 : theme.text,
+                              fontSize: fontSize("xs"),
                             }
                           ]}>
                             +{preset}
@@ -436,7 +447,7 @@ const RefillTracker = () => {
 
                     {/* Preview section */}
                     <View style={[styles.previewContainer, { backgroundColor: isDarkMode ? "#122513" : "#f1edf9" }]}>
-                      <Text style={[styles.previewText, { color: isDarkMode ? "#81c784" : "#5d38a0" }]}>
+                      <Text style={[styles.previewText, { color: isDarkMode ? "#81c784" : "#5d38a0", fontSize: fontSize("xs") }]}>
                         New Stock Preview: <Text style={{ fontFamily: "ComicBold" }}>
                           {selectedMed.stockCount} + {parseInt(refillAmount) || 0} = {(selectedMed.stockCount + (parseInt(refillAmount) || 0))} doses
                         </Text>
@@ -446,23 +457,23 @@ const RefillTracker = () => {
                 ) : (
                   <>
                     {/* Set Total Stock input */}
-                    <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    <Text style={[styles.inputLabel, { color: theme.text, fontSize: fontSize("sm") }]}>
                       Enter the new total stock count:
                     </Text>
                     <View style={styles.inputRow}>
                       <TextInput
-                        style={[styles.modalInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
+                        style={[styles.modalInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, fontSize: fontSize("sm"), minHeight: touchTarget("minHeight") * 0.8, paddingVertical: touchTarget("paddingV") / 2 }]}
                         keyboardType="number-pad"
                         value={totalStockAmount}
                         onChangeText={setTotalStockAmount}
                         maxLength={5}
                       />
-                      <Text style={[styles.modalDoseLabel, { color: theme.subText }]}>doses</Text>
+                      <Text style={[styles.modalDoseLabel, { color: theme.subText, fontSize: fontSize("sm") }]}>doses</Text>
                     </View>
 
                     {/* Preview section for set */}
                     <View style={[styles.previewContainer, { backgroundColor: isDarkMode ? "#122513" : "#f1edf9" }]}>
-                      <Text style={[styles.previewText, { color: isDarkMode ? "#81c784" : "#5d38a0" }]}>
+                      <Text style={[styles.previewText, { color: isDarkMode ? "#81c784" : "#5d38a0", fontSize: fontSize("xs") }]}>
                         New Stock Preview: <Text style={{ fontFamily: "ComicBold" }}>
                           {parseInt(totalStockAmount) || 0} doses
                         </Text>
@@ -481,11 +492,11 @@ const RefillTracker = () => {
                 >
                   <LinearGradient
                     colors={isDarkMode ? ["#80cbc4", "#004d40"] : ["#67fc67", "#026e02"]}
-                    style={styles.modalSaveGradient}
+                    style={[styles.modalSaveGradient, { paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight"), justifyContent: "center" }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.modalSaveText}>
+                    <Text style={[styles.modalSaveText, { fontSize: fontSize("sm") }]}>
                       {modalMode === "refill" ? "Confirm Refill" : "Update Total Stock"}
                     </Text>
                   </LinearGradient>
@@ -493,9 +504,9 @@ const RefillTracker = () => {
 
                 <Pressable
                   onPress={() => setIsModalVisible(false)}
-                  style={[styles.cancelBtn, { borderColor: theme.border }]}
+                  style={[styles.cancelBtn, { borderColor: theme.border, paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight") }]}
                 >
-                  <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancel</Text>
+                  <Text style={[styles.cancelBtnText, { color: theme.text, fontSize: fontSize("sm") }]}>Cancel</Text>
                 </Pressable>
               </ScrollView>
             )}
@@ -505,6 +516,8 @@ const RefillTracker = () => {
     </View>
   );
 };
+
+export default RefillTracker;
 
 const styles = StyleSheet.create({
   container: {
@@ -522,7 +535,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "white",
-    fontSize: 22,
     fontFamily: "ComicBold",
   },
   statsContainer: {
@@ -549,11 +561,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 18,
     fontFamily: "ComicBold",
   },
   statLabel: {
-    fontSize: 11,
     fontFamily: "ComicRegular",
     marginTop: 1,
   },
@@ -568,14 +578,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 10 : 4,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
     fontFamily: "ComicRegular",
   },
   listContainer: {
@@ -597,9 +605,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   medIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -614,25 +619,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   medName: {
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
   medDetails: {
-    fontSize: 13,
     fontFamily: "ComicRegular",
     marginTop: 2,
   },
   refillTriggerBtn: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
     gap: 4,
   },
   refillTriggerText: {
-    fontSize: 12,
     fontFamily: "ComicBold",
   },
   stockStatusContainer: {
@@ -648,11 +648,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   stockAmountText: {
-    fontSize: 13,
     fontFamily: "ComicRegular",
   },
   thresholdLabel: {
-    fontSize: 11,
     fontFamily: "ComicRegular",
   },
   progressBarBg: {
@@ -674,7 +672,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusBadgeText: {
-    fontSize: 11,
     fontFamily: "ComicBold",
   },
   emptyContainer: {
@@ -684,21 +681,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 16,
     textAlign: "center",
     marginTop: 15,
     fontFamily: "ComicBold",
   },
   addMedBtn: {
     backgroundColor: "#026e02",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
     borderRadius: 12,
     marginTop: 20,
   },
   addMedBtnText: {
     color: "white",
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
   modalOverlay: {
@@ -728,7 +721,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   modalTitle: {
-    fontSize: 20,
     fontFamily: "ComicBold",
   },
   closeIconButton: {
@@ -750,7 +742,6 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
@@ -762,22 +753,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
   },
   tabText: {
-    fontSize: 13,
     fontFamily: "ComicBold",
   },
   modalMedName: {
-    fontSize: 18,
     fontFamily: "ComicBold",
     textAlign: "center",
   },
   modalMedDetails: {
-    fontSize: 13,
     fontFamily: "ComicRegular",
     textAlign: "center",
     marginTop: 3,
   },
   inputLabel: {
-    fontSize: 14,
     fontFamily: "ComicBold",
   },
   inputRow: {
@@ -790,12 +777,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
   modalDoseLabel: {
-    fontSize: 15,
     fontFamily: "ComicBold",
   },
   presetsContainer: {
@@ -808,12 +792,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
   },
   presetText: {
-    fontSize: 13,
     fontFamily: "ComicBold",
   },
   previewContainer: {
@@ -823,7 +805,6 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   previewText: {
-    fontSize: 13,
     fontFamily: "ComicRegular",
   },
   modalSaveBtn: {
@@ -832,26 +813,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   modalSaveGradient: {
-    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   modalSaveText: {
     color: "white",
-    fontSize: 16,
     fontFamily: "ComicBold",
   },
   cancelBtn: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
   },
   cancelBtnText: {
-    fontSize: 15,
     fontFamily: "ComicBold",
   },
 });
-
-export default RefillTracker;

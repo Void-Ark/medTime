@@ -4,6 +4,7 @@ import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 
 export interface MedCardProps {
   medicine_name: string;
@@ -23,6 +24,7 @@ export default function MedCard({
   statusText,
 }: MedCardProps) {
   const { theme, isDarkMode } = useAppTheme();
+  const { fontSize, touchTarget } = useAccessibility();
   const parsedTime = typeof time === "string" ? new Date(time) : time;
 
   // Compute status details based on taken prop and optional statusText context
@@ -67,14 +69,17 @@ export default function MedCard({
     displayStatus = "Not Taken";
   }
 
+  const calculatedMinHeight = touchTarget("minHeight") + 10;
+
   return (
     <View
       style={{
         backgroundColor: cardBg,
         borderColor: cardBorder,
         borderWidth: 1.5,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: touchTarget("paddingH") / 1.5,
+        paddingVertical: touchTarget("paddingV") / 1.5,
+        minHeight: calculatedMinHeight,
         borderRadius: 14,
         marginVertical: 6,
         marginHorizontal: 5,
@@ -93,9 +98,9 @@ export default function MedCard({
         <View
           style={{
             backgroundColor: isDarkMode ? "#2e2e2e" : "#ffffff",
-            width: 48,
-            height: 48,
-            borderRadius: 24,
+            width: fontSize("lg") * 2.2,
+            height: fontSize("lg") * 2.2,
+            borderRadius: (fontSize("lg") * 2.2) / 2,
             justifyContent: "center",
             alignItems: "center",
             marginRight: 12,
@@ -110,7 +115,7 @@ export default function MedCard({
               style={{ width: "100%", height: "100%", resizeMode: "cover" }}
             />
           ) : (
-            iconSelector(quantity, iconColor)
+            iconSelector(quantity, iconColor, fontSize("lg") * 1.1)
           )}
         </View>
         <View style={{ flex: 1 }}>
@@ -118,14 +123,14 @@ export default function MedCard({
             ellipsizeMode="tail" // add ... if too long
             numberOfLines={1}
             style={{
-              fontSize: 16,
+              fontSize: fontSize("md"),
               color: theme.text,
               fontFamily: "ComicBold",
             }}
           >
             {medicine_name}
           </Text>
-          <Text style={{ fontSize: 13, color: theme.subText, fontFamily: "ComicRegular", marginTop: 2 }}>{quantity}</Text>
+          <Text style={{ fontSize: fontSize("xs"), color: theme.subText, fontFamily: "ComicRegular", marginTop: 2 }}>{quantity}</Text>
         </View>
       </View>
 
@@ -134,13 +139,13 @@ export default function MedCard({
         <Text
           style={{
             color: statusColor,
-            fontSize: 14,
+            fontSize: fontSize("sm"),
             fontFamily: "ComicBold",
           }}
         >
           {displayStatus}
         </Text>
-        <Text style={{ fontSize: 13, color: theme.subText, fontFamily: "ComicRegular", marginTop: 4 }}>
+        <Text style={{ fontSize: fontSize("xs"), color: theme.subText, fontFamily: "ComicRegular", marginTop: 4 }}>
           {parsedTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
         </Text>
       </View>
@@ -148,7 +153,7 @@ export default function MedCard({
   );
 }
 
-function iconSelector(quantity: string, iconColor: string) {
+function iconSelector(quantity: string, iconColor: string, size: number) {
   const styles = StyleSheet.create({
     icon: {},
   });
@@ -157,7 +162,7 @@ function iconSelector(quantity: string, iconColor: string) {
     return (
       <FontAwesome5
         name="tablets"
-        size={20}
+        size={size}
         color={iconColor}
         style={styles.icon}
       />
@@ -166,7 +171,7 @@ function iconSelector(quantity: string, iconColor: string) {
     return (
       <FontAwesome5
         name="capsules"
-        size={20}
+        size={size}
         color={iconColor}
         style={styles.icon}
       />
@@ -175,7 +180,7 @@ function iconSelector(quantity: string, iconColor: string) {
     return (
       <FontAwesome5
         name="syringe"
-        size={20}
+        size={size}
         color={iconColor}
         style={styles.icon}
       />
@@ -188,7 +193,7 @@ function iconSelector(quantity: string, iconColor: string) {
     return (
       <MaterialCommunityIcons
         name="bottle-tonic-plus"
-        size={20}
+        size={size}
         color={iconColor}
         style={styles.icon}
       />
@@ -197,9 +202,10 @@ function iconSelector(quantity: string, iconColor: string) {
     return (
       <MaterialIcons
         name="medication"
-        size={22}
+        size={size + 2}
         color={iconColor}
         style={styles.icon}
       />
     );
 }
+

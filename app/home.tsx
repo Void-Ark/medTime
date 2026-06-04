@@ -26,6 +26,7 @@ import { useFocusEffect } from "expo-router";
 import { getHistory } from "@/storage/history";
 import { MedInstance } from "./calendar";
 import { useAppTheme } from "@/providers/themeProvider";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 import { isMedicineScheduleEnded } from "@/utils/medicineUtils";
 
 const Home = () => {
@@ -36,6 +37,7 @@ const Home = () => {
       : insets.top;
 
   const { isDarkMode, theme } = useAppTheme();
+  const { fontSize, touchTarget, iconSize, seniorModeEnabled } = useAccessibility();
 
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; type: "missed" | "low_stock"; time?: Date }>>([]);
@@ -244,9 +246,9 @@ const Home = () => {
             padding: 10,
           }}
         >
-          <Text style={{ color: "white", fontSize: 18, fontFamily: "ComicBold" }}>Daily Progress</Text>
-          <Pressable onPress={() => setIsNotificationModalVisible(true)} style={styles.notificationContainer}>
-            <MaterialIcons name="notifications-none" size={28} color="white" />
+          <Text style={{ color: "white", fontSize: fontSize("md"), fontFamily: "ComicBold" }}>Daily Progress</Text>
+          <Pressable onPress={() => setIsNotificationModalVisible(true)} style={[styles.notificationContainer, { minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }]}>
+            <MaterialIcons name="notifications-none" size={fontSize("xl") + 2} color="white" />
             {notifications.length > 0 && <View style={styles.dot} />}
           </Pressable>
         </View>
@@ -258,7 +260,7 @@ const Home = () => {
       </LinearGradient>
 
       <View style={styles.quickActionsContainer}>
-        <Text style={[styles.quickActionsTitle, { color: theme.text }]}>Quick Actions</Text>
+        <Text style={[styles.quickActionsTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
           {QUICK_ACTIONS.map((action) => (
             <View key={action.route} style={{ width: "48%", margin: "1%" }}>
@@ -270,7 +272,7 @@ const Home = () => {
 
       <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
-          <Text style={{ fontSize: 18, fontFamily: "ComicBold", color: theme.text }}>Today's Schedule</Text>
+          <Text style={{ fontSize: fontSize("md"), fontFamily: "ComicBold", color: theme.text }}>Today's Schedule</Text>
         </View>
         {todayMeds.length > 0 ? (
           todayMeds.map((inst) => (
@@ -301,13 +303,13 @@ const Home = () => {
           <View style={{ alignItems: "center", marginTop: 25 }}>
             <FontAwesome6
               name="house-medical-circle-check"
-              size={80}
+              size={iconSize("hero")}
               color={isDarkMode ? "#00796b" : "#a5daa5"}
             />
             <Text
               style={{
                 color: isDarkMode ? "#80cbc4" : "#2f6f2f",
-                fontSize: 16,
+                fontSize: fontSize("sm"),
                 marginTop: 15,
                 fontFamily: "ComicBold",
                 textAlign: "center",
@@ -329,9 +331,9 @@ const Home = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
             <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? "#37474f" : "#eee" }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Notifications</Text>
+              <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Notifications</Text>
               <Pressable style={styles.closeIconButton} onPress={() => setIsNotificationModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color={theme.text} />
+                <MaterialIcons name="close" size={fontSize("lg")} color={theme.text} />
               </Pressable>
             </View>
 
@@ -359,14 +361,14 @@ const Home = () => {
                       <View style={styles.notificationTitleRow}>
                         <MaterialIcons
                           name={isMissed ? "alarm-off" : "hourglass-empty"}
-                          size={18}
+                          size={fontSize("sm")}
                           color={isMissed ? (isDarkMode ? "#e57373" : "#c62828") : (isDarkMode ? "#ffb74d" : "#ef6c00")}
                         />
-                        <Text style={[styles.notificationCardTitle, { color: theme.text }]}>
+                        <Text style={[styles.notificationCardTitle, { color: theme.text, fontSize: fontSize("sm") }]}>
                           {notif.title}
                         </Text>
                       </View>
-                      <Text style={[styles.notificationMessage, { color: theme.subText }]}>
+                      <Text style={[styles.notificationMessage, { color: theme.subText, fontSize: fontSize("xs") }]}>
                         {notif.message}
                       </Text>
                     </View>
@@ -374,9 +376,9 @@ const Home = () => {
                 })
               ) : (
                 <View style={styles.emptyNotifications}>
-                  <FontAwesome6 name="bell-slash" size={60} color={isDarkMode ? "#00796b" : "#a5daa5"} />
-                  <Text style={[styles.emptyNotificationsText, { color: theme.text }]}>All Caught Up!</Text>
-                  <Text style={[styles.emptyNotificationsSubText, { color: theme.subText }]}>
+                  <FontAwesome6 name="bell-slash" size={iconSize("lg")} color={isDarkMode ? "#00796b" : "#a5daa5"} />
+                  <Text style={[styles.emptyNotificationsText, { color: theme.text, fontSize: fontSize("md") }]}>All Caught Up!</Text>
+                  <Text style={[styles.emptyNotificationsSubText, { color: theme.subText, fontSize: fontSize("xs") }]}>
                     No new alarms or low-stock refill warnings at this time.
                   </Text>
                 </View>
@@ -392,11 +394,11 @@ const Home = () => {
             >
               <LinearGradient
                 colors={isDarkMode ? ["#80cbc4", "#004d40"] : ["#67fc67", "#026e02"]}
-                style={styles.modalCloseGradient}
+                style={[styles.modalCloseGradient, { paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight"), justifyContent: "center" }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={[styles.modalCloseText, { fontSize: fontSize("sm") }]}>Close</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -413,9 +415,9 @@ const Home = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
             <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? "#37474f" : "#eee" }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Medication Details</Text>
+              <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Medication Details</Text>
               <Pressable style={styles.closeIconButton} onPress={() => setIsPhotoModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color={theme.text} />
+                <MaterialIcons name="close" size={fontSize("lg")} color={theme.text} />
               </Pressable>
             </View>
 
@@ -457,11 +459,11 @@ const Home = () => {
                  )}
 
                 {/* Details Section */}
-                <Text style={[styles.modalMedName, { color: theme.text }]}>
+                <Text style={[styles.modalMedName, { color: theme.text, fontSize: fontSize("xl") }]}>
                   {selectedMedInstance.medicine.name}
                 </Text>
 
-                <Text style={[styles.modalMedDosage, { color: theme.subText }]}>
+                <Text style={[styles.modalMedDosage, { color: theme.subText, fontSize: fontSize("md") }]}>
                   Dosage: {selectedMedInstance.medicine.dosage}
                 </Text>
 
@@ -469,8 +471,8 @@ const Home = () => {
                 <View style={styles.statusBadgeRow}>
                   {selectedMedInstance.isTaken ? (
                     <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? "#152e1f" : "#e8f5e9", borderColor: isDarkMode ? "#1e5e3a" : "#c8e6c9" }]}>
-                      <MaterialIcons name="check-circle" size={18} color={isDarkMode ? "#81c784" : "#2e7d32"} />
-                      <Text style={[styles.statusBadgeText, { color: isDarkMode ? "#81c784" : "#2e7d32" }]}>
+                      <MaterialIcons name="check-circle" size={fontSize("sm")} color={isDarkMode ? "#81c784" : "#2e7d32"} />
+                      <Text style={[styles.statusBadgeText, { color: isDarkMode ? "#81c784" : "#2e7d32", fontSize: fontSize("sm") }]}>
                         Taken
                       </Text>
                     </View>
@@ -488,7 +490,7 @@ const Home = () => {
                     ]}>
                       <MaterialIcons 
                         name={selectedMedInstance.statusText === "Missed" ? "error" : (selectedMedInstance.statusText === "Take" ? "play-arrow" : "lock")} 
-                        size={18} 
+                        size={fontSize("sm")} 
                         color={selectedMedInstance.statusText === "Missed" 
                           ? (isDarkMode ? "#e57373" : "#c62828") 
                           : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText)} 
@@ -498,7 +500,8 @@ const Home = () => {
                         {
                           color: selectedMedInstance.statusText === "Missed" 
                             ? (isDarkMode ? "#e57373" : "#c62828") 
-                            : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText)
+                            : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText),
+                          fontSize: fontSize("sm"),
                         }
                       ]}>
                         {selectedMedInstance.statusText === "Missed" ? "Missed" : (selectedMedInstance.statusText === "Take" ? "Take Now" : (selectedMedInstance.statusText === "Locked" ? "Locked" : "Not Taken"))}
@@ -506,9 +509,9 @@ const Home = () => {
                     </View>
                   )}
                 </View>
-
+ 
                 {/* Timing Info */}
-                <Text style={[styles.modalTimeInfo, { color: theme.subText }]}>
+                <Text style={[styles.modalTimeInfo, { color: theme.subText, fontSize: fontSize("sm") }]}>
                   Scheduled: {selectedMedInstance.scheduledTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </Text>
 
@@ -523,18 +526,18 @@ const Home = () => {
                   >
                     <LinearGradient
                       colors={isDarkMode ? ["#004d40", "#00796b"] : ["#67fc67", "#026e02"]}
-                      style={styles.modalActionGradient}
+                      style={[styles.modalActionGradient, { paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight"), justifyContent: "center" }]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <FontAwesome6 name="check-double" size={16} color="white" style={{ marginRight: 8 }} />
-                      <Text style={styles.modalActionText}>Take Medication Now</Text>
+                      <FontAwesome6 name="check-double" size={fontSize("sm")} color="white" style={{ marginRight: 8 }} />
+                      <Text style={[styles.modalActionText, { fontSize: fontSize("sm") }]}>Take Medication Now</Text>
                     </LinearGradient>
                   </Pressable>
                 )}
               </View>
             )}
-
+ 
             <Pressable
               onPress={() => setIsPhotoModalVisible(false)}
               style={({ pressed }) => [
@@ -544,11 +547,11 @@ const Home = () => {
             >
               <LinearGradient
                 colors={isDarkMode ? ["#80cbc4", "#004d40"] : ["#67fc67", "#026e02"]}
-                style={styles.modalCloseGradient}
+                style={[styles.modalCloseGradient, { paddingVertical: touchTarget("paddingV"), minHeight: touchTarget("minHeight"), justifyContent: "center" }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={[styles.modalCloseText, { fontSize: fontSize("sm") }]}>Close</Text>
               </LinearGradient>
             </Pressable>
           </View>

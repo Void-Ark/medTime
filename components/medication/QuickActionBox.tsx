@@ -5,6 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+import { useAccessibility } from "@/providers/accessibilityProvider";
 
 export interface QuickActionBoxProps {
   icon: string;
@@ -23,6 +24,7 @@ export const QuickActionBox: React.FC<QuickActionBoxProps> = ({
 }) => {
   const router = useRouter();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const { fontSize, touchTarget } = useAccessibility();
 
   const handlePressIn = () => {
     Animated.timing(scaleAnim, {
@@ -40,6 +42,8 @@ export const QuickActionBox: React.FC<QuickActionBoxProps> = ({
     }).start();
   };
 
+  const calculatedPadding = touchTarget("paddingV");
+
   return (
     <Pressable
       onPress={() => {
@@ -53,68 +57,91 @@ export const QuickActionBox: React.FC<QuickActionBoxProps> = ({
         <LinearGradient
           colors={gradient}
           style={{
-            padding: 10,
+            padding: calculatedPadding,
             borderRadius: 20,
             alignItems: "flex-start",
             justifyContent: "center",
             flexDirection: "column",
+            minHeight: touchTarget("minHeight") * 2,
           }}
         >
-          {icons[icon as keyof typeof icons]}
-          <Text style={{ color: color, fontSize: 16, fontFamily: "ComicBold" }}>{label}</Text>
+          {renderIcon(icon, fontSize("lg"))}
+          <Text style={{ color: color, fontSize: fontSize("sm"), fontFamily: "ComicBold", marginTop: 4 }}>{label}</Text>
         </LinearGradient>
       </Animated.View>
     </Pressable>
   );
 };
 
-const styles = StyleSheet.create({
-  icon: {
-    padding: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 50,
-    marginBottom: 5,
-  },
-});
+const renderIcon = (key: string, size: number) => {
+  const localStyles = StyleSheet.create({
+    icon: {
+      padding: 10,
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      borderRadius: 50,
+      marginBottom: 5,
+    },
+  });
 
-const icons = {
-  add_medication: (
-    <MaterialIcons
-      name="assignment-add"
-      size={24}
-      color="white"
-      style={styles.icon}
-    />
-  ),
-  calander: (
-    <FontAwesome
-      name="calendar-check-o"
-      size={24}
-      color="white"
-      style={styles.icon}
-    />
-  ),
-  history: (
-    <FontAwesome name="history" size={24} color="white" style={styles.icon} />
-  ),
-  refill_tracker: (
-    <Ionicons name="bag-check" size={24} color="white" style={styles.icon} />
-  ),
-  medications: (
-    <MaterialIcons
-      name="medical-services"
-      size={24}
-      color="white"
-      style={styles.icon}
-    />
-  ),
-  settings: (
-    <MaterialIcons
-      name="settings"
-      size={24}
-      color="white"
-      style={styles.icon}
-    />
-  ),
+  switch (key) {
+    case "add_medication":
+      return (
+        <MaterialIcons
+          name="assignment-add"
+          size={size}
+          color="white"
+          style={localStyles.icon}
+        />
+      );
+    case "calander":
+      return (
+        <FontAwesome
+          name="calendar-check-o"
+          size={size}
+          color="white"
+          style={localStyles.icon}
+        />
+      );
+    case "history":
+      return (
+        <FontAwesome
+          name="history"
+          size={size}
+          color="white"
+          style={localStyles.icon}
+        />
+      );
+    case "refill_tracker":
+      return (
+        <Ionicons
+          name="bag-check"
+          size={size}
+          color="white"
+          style={localStyles.icon}
+        />
+      );
+    case "medications":
+      return (
+        <MaterialIcons
+          name="medical-services"
+          size={size}
+          color="white"
+          style={localStyles.icon}
+        />
+      );
+    case "settings":
+      return (
+        <MaterialIcons
+          name="settings"
+          size={size}
+          color="white"
+          style={localStyles.icon}
+        />
+      );
+    default:
+      return null;
+  }
 };
+
 export default QuickActionBox;
+
