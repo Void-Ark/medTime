@@ -7,11 +7,9 @@ import {
   Text,
   View,
   Switch,
-  Share,
-  Modal,
-  TextInput,
   Alert,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import React, { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,7 +20,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "@/providers/themeProvider";
 import { useAccessibility } from "@/providers/accessibilityProvider";
-import { exportBackupData, importBackupData } from "@/storage/db";
+import { exportAsZip, peekBackup, restoreBackup } from "@/utils/backupUtils";
 
 const Settings = () => {
   const router = useRouter();
@@ -44,8 +42,8 @@ const Settings = () => {
 
   // Settings states
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
-  const [importModalVisible, setImportModalVisible] = useState<boolean>(false);
-  const [pastedBackup, setPastedBackup] = useState<string>("");
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isImporting, setIsImporting] = useState<boolean>(false);
 
   // Load reminder settings
   useEffect(() => {
@@ -70,77 +68,91 @@ const Settings = () => {
     }
   };
 
-  // Export medicines & history database
+  // Export: build a .zip archive (data.json + images/) and open native share sheet
   const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
-      const { medicines, history, images } = await exportBackupData();
-
-      const backupObj = {
-        medicines,
-        history,
-        images,
-        exportedAt: new Date().toISOString(),
-        version: "1.0",
-      };
-
-      const backupStr = JSON.stringify(backupObj, null, 2);
-
-      await Share.share({
-        message: backupStr,
-        title: "MedTime Backup Export",
-      });
+      await exportAsZip();
     } catch (error) {
       console.error("Error exporting backup:", error);
-      Alert.alert("Export Failed", "Could not serialize local medication data.");
+      Alert.alert("Export Failed", "Could not create the backup archive. Please try again.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  // Import medicines & history database
+  // Import: pick a .zip (new) or .json (legacy) backup, peek at contents, confirm, restore
   const handleImport = async () => {
-    if (!pastedBackup.trim()) {
-      Alert.alert("Validation Error", "Please paste your exported JSON backup string.");
+    if (isImporting) return;
+
+    // Step 1 — let the user pick the file
+    let pickerResult: DocumentPicker.DocumentPickerResult;
+    try {
+      pickerResult = await DocumentPicker.getDocumentAsync({
+        // Accept zip + json; "*/*" as fallback for Android
+        type: ["application/zip", "application/json", "*/*"],
+        copyToCacheDirectory: true,
+      });
+    } catch (e) {
+      console.error("DocumentPicker error:", e);
       return;
     }
 
+    if (pickerResult.canceled || !pickerResult.assets?.length) return;
+
+    const { uri: fileUri, name: fileName = "" } = pickerResult.assets[0];
+
+    // Step 2 — peek at the file to build a confirmation message
+    setIsImporting(true);
+    let peek;
     try {
-      const parsed = JSON.parse(pastedBackup);
-
-      if (!parsed || typeof parsed !== "object") {
-        throw new Error("Invalid backup JSON format");
-      }
-      if (!Array.isArray(parsed.medicines)) {
-        throw new Error("Backup file must contain a medicines array");
-      }
-      if (parsed.history && !Array.isArray(parsed.history)) {
-        throw new Error("Backup history must be a valid array");
-      }
-
+      peek = await peekBackup(fileUri, fileName);
+    } catch (e: any) {
+      console.error("Peek error:", e);
       Alert.alert(
-        "Confirm Data Restore",
-        "Restoring this backup will replace all active medications and history logs. This action cannot be undone. Do you want to proceed?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Restore",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await importBackupData(parsed);
-                setImportModalVisible(false);
-                setPastedBackup("");
-                Alert.alert("Success", "Medication database successfully restored!");
-              } catch (writeErr) {
-                console.error("Write error:", writeErr);
-                Alert.alert("Restore Failed", "Failed to write database records to storage.");
-              }
-            },
-          },
-        ]
+        "Unreadable File",
+        "Could not read the selected file. Make sure it is a valid MedTime backup (.zip or .json)."
       );
-    } catch (error: any) {
-      console.error("Error importing backup:", error);
-      Alert.alert("Restore Failed", `Invalid JSON structure: ${error?.message || "Check formatting"}`);
+      setIsImporting(false);
+      return;
     }
+
+    const formatLabel = peek.format === "zip" ? "ZIP archive" : "JSON backup (legacy)";
+    const imageLabel = peek.imageCount > 0 ? ` and ${peek.imageCount} image(s)` : "";
+
+    // Step 3 — confirm with the user
+    Alert.alert(
+      "Confirm Restore",
+      `Found ${peek.medicineCount} medication(s)${imageLabel} in this ${formatLabel}.\n\nRestoring will replace ALL current data. This cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => setIsImporting(false),
+        },
+        {
+          text: "Restore",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await restoreBackup(fileUri, fileName);
+              Alert.alert(
+                "✅ Restored!",
+                `Successfully restored ${result.medicines} medication(s)${
+                  result.images > 0 ? ` with ${result.images} image(s)` : ""
+                }.`
+              );
+            } catch (err: any) {
+              console.error("Restore error:", err);
+              Alert.alert("Restore Failed", err?.message || "An unexpected error occurred.");
+            } finally {
+              setIsImporting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -246,7 +258,7 @@ const Settings = () => {
           </View>
 
           <Text style={[styles.settingDescParagraph, { color: theme.subText, fontSize: fontSize("xs") }]}>
-            Export your complete medications list and intake logs to store as an offline JSON backup, or import past data values below.
+            Export a <Text style={{ fontFamily: "ComicBold" }}>.zip</Text> archive containing your medications, history, and all images as real files — no Base64 bloat. AirDrop it or save to iCloud, then import on your new phone. Also accepts old .json backups.
           </Text>
 
           <View style={styles.buttonRow}>
@@ -255,16 +267,22 @@ const Settings = () => {
               style={[
                 styles.btn,
                 {
-                  backgroundColor: isDarkMode ? "#004d40" : "#e8f5e9",
+                  backgroundColor: isExporting
+                    ? (isDarkMode ? "#00332b" : "#c8e6c9")
+                    : (isDarkMode ? "#004d40" : "#e8f5e9"),
                   borderColor: isDarkMode ? "#00796b" : "#a5daa5",
                   paddingVertical: touchTarget("paddingV"),
                   minHeight: touchTarget("minHeight"),
+                  opacity: isExporting ? 0.7 : 1,
                 },
               ]}
               onPress={handleExport}
+              disabled={isExporting}
             >
               <FontAwesome6 name="share-from-square" size={fontSize("sm")} color={isDarkMode ? "#80cbc4" : "#026e02"} />
-              <Text style={[styles.btnText, { color: isDarkMode ? "#80cbc4" : "#026e02", fontSize: fontSize("sm") }]}>Export Backup</Text>
+              <Text style={[styles.btnText, { color: isDarkMode ? "#80cbc4" : "#026e02", fontSize: fontSize("sm") }]}>
+                {isExporting ? "Preparing..." : "Export Backup"}
+              </Text>
             </Pressable>
 
             {/* Import */}
@@ -272,72 +290,26 @@ const Settings = () => {
               style={[
                 styles.btn,
                 {
-                  backgroundColor: isDarkMode ? "#37474f" : "#f5f5f5",
+                  backgroundColor: isImporting
+                    ? (isDarkMode ? "#263238" : "#e0e0e0")
+                    : (isDarkMode ? "#37474f" : "#f5f5f5"),
                   borderColor: isDarkMode ? "#455a64" : "#ccc",
                   paddingVertical: touchTarget("paddingV"),
                   minHeight: touchTarget("minHeight"),
+                  opacity: isImporting ? 0.7 : 1,
                 },
               ]}
-              onPress={() => setImportModalVisible(true)}
+              onPress={handleImport}
+              disabled={isImporting}
             >
               <FontAwesome6 name="file-import" size={fontSize("sm")} color={isDarkMode ? "#cfd8dc" : "#555"} />
-              <Text style={[styles.btnText, { color: isDarkMode ? "#cfd8dc" : "#555", fontSize: fontSize("sm") }]}>Import Backup</Text>
+              <Text style={[styles.btnText, { color: isDarkMode ? "#cfd8dc" : "#555", fontSize: fontSize("sm") }]}>
+                {isImporting ? "Restoring..." : "Import Backup"}
+              </Text>
             </Pressable>
           </View>
         </View>
       </ScrollView>
-
-      {/* Import Modal */}
-      <Modal
-        visible={importModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setImportModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
-            <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize("lg") }]}>Restore Medication Database</Text>
-            <Text style={[styles.settingDesc, { fontSize: fontSize("xs") }]}>Paste your exported JSON backup text string here:</Text>
-
-            <TextInput
-              style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
-              placeholder='{"medicines": [...], "history": [...]}'
-              placeholderTextColor="#888"
-              multiline={true}
-              numberOfLines={8}
-              value={pastedBackup}
-              onChangeText={setPastedBackup}
-            />
-
-            <View style={styles.modalButtonRow}>
-              <Pressable
-                style={[
-                  styles.modalBtn,
-                  styles.cancelBtn,
-                  { minHeight: touchTarget("minHeight"), justifyContent: "center" },
-                ]}
-                onPress={() => {
-                  setImportModalVisible(false);
-                  setPastedBackup("");
-                }}
-              >
-                <Text style={[styles.cancelBtnText, { fontSize: fontSize("sm") }]}>Cancel</Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.modalBtn,
-                  styles.restoreBtn,
-                  { minHeight: touchTarget("minHeight"), justifyContent: "center" },
-                ]}
-                onPress={handleImport}
-              >
-                <Text style={[styles.restoreBtnText, { fontSize: fontSize("sm") }]}>Restore</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -416,62 +388,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   btnText: {
-    fontFamily: "ComicBold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "90%",
-    maxWidth: 360,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  modalTitle: {
-    fontFamily: "ComicBold",
-    marginBottom: 5,
-  },
-  textArea: {
-    height: 150,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 15,
-    marginBottom: 20,
-    textAlignVertical: "top",
-    fontFamily: "monospace",
-    fontSize: 12,
-  },
-  modalButtonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 15,
-  },
-  modalBtn: {
-    flex: 1,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  cancelBtn: {
-    backgroundColor: "#ccc",
-  },
-  cancelBtnText: {
-    color: "#333",
-    fontFamily: "ComicBold",
-  },
-  restoreBtn: {
-    backgroundColor: "#c62828",
-  },
-  restoreBtnText: {
-    color: "white",
     fontFamily: "ComicBold",
   },
 });
