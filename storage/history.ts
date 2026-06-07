@@ -32,6 +32,18 @@ export async function addHistoryEntry(log: IntakeLog): Promise<boolean> {
   }
 }
 
+export async function deleteHistoryEntries(ids: string[]): Promise<boolean> {
+  if (ids.length === 0) return true;
+  try {
+    const placeholders = ids.map(() => "?").join(", ");
+    await db.runAsync(`DELETE FROM history_logs WHERE id IN (${placeholders});`, ids);
+    return true;
+  } catch (error) {
+    console.error("Error deleting history entries:", error);
+    return false;
+  }
+}
+
 export async function clearHistory(): Promise<boolean> {
   try {
     await db.runAsync("DELETE FROM history_logs;");

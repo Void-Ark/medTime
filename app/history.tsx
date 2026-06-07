@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from "react-native";
 import React, { useEffect, useState, useCallback } from "react";
-import { getHistory, clearHistory } from "@/storage/history";
+import { getHistory, clearHistory, deleteHistoryEntries } from "@/storage/history";
 import { IntakeLog, Medicine } from "@/schemas";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -44,6 +44,10 @@ const History = () => {
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
   const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
 
+  // Selection-mode state
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const fetchHistory = async () => {
     const data = await getHistory();
     setLogs(data);
@@ -57,22 +61,78 @@ const History = () => {
   useFocusEffect(
     useCallback(() => {
       fetchHistory();
+      // Reset selection whenever screen focuses
+      setIsSelectMode(false);
+      setSelectedIds(new Set());
     }, [])
   );
 
-  const handleClear = () => {
+  // ---------- selection helpers ----------
+  const toggleSelectMode = () => {
+    setIsSelectMode((prev) => {
+      if (prev) setSelectedIds(new Set());
+      return !prev;
+    });
+  };
+
+  const toggleItem = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === logs.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(logs.map((l) => l.id)));
+    }
+  };
+
+  // ---------- delete handlers ----------
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
     Alert.alert(
-      "Clear History Logs",
-      "Are you absolutely sure you want to clear all past medication intake history logs? This action cannot be undone.",
+      "Delete Selected Entries",
+      `You are about to permanently delete ${selectedIds.size} intake record${selectedIds.size > 1 ? "s" : ""}.\n\n⚠️ This action cannot be undone. Once deleted, this data cannot be recovered.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Clear All",
+          text: `Delete ${selectedIds.size} Record${selectedIds.size > 1 ? "s" : ""}`,
+          style: "destructive",
+          onPress: async () => {
+            const ids = Array.from(selectedIds);
+            const success = await deleteHistoryEntries(ids);
+            if (success) {
+              setLogs((prev) => prev.filter((l) => !selectedIds.has(l.id)));
+              setSelectedIds(new Set());
+              setIsSelectMode(false);
+            } else {
+              Alert.alert("Error", "Failed to delete selected records.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearAll = () => {
+    Alert.alert(
+      "Clear All History",
+      "⚠️ You are about to permanently delete ALL medication intake records.\n\nThis action cannot be undone. Once deleted, this data cannot be recovered.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
           style: "destructive",
           onPress: async () => {
             const success = await clearHistory();
             if (success) {
               setLogs([]);
+              setSelectedIds(new Set());
+              setIsSelectMode(false);
             } else {
               Alert.alert("Error", "Failed to clear intake history.");
             }
@@ -82,19 +142,21 @@ const History = () => {
     );
   };
 
+  // ---------- log press ----------
   const handleLogPress = (item: IntakeLog) => {
-    // 1. Find corresponding medicine record (works even if ended, as it remains in database)
+    if (isSelectMode) {
+      toggleItem(item.id);
+      return;
+    }
     const med = medicines.find((m) => m.id === item.medicineId) || null;
-    
-    // 2. Gather full take history logs for this medicine
     const medHistory = logs.filter((l) => l.medicineId === item.medicineId);
-
     setSelectedLog(item);
     setSelectedMed(med);
     setMedTakeHistory(medHistory);
     setIsDetailsModalVisible(true);
   };
 
+  // ---------- render item ----------
   const renderLogItem = ({ item }: { item: IntakeLog }) => {
     const date = new Date(item.takenAt);
     const dateString = date.toLocaleDateString(undefined, {
@@ -108,9 +170,17 @@ const History = () => {
       hour12: true,
     });
 
+    const isChecked = selectedIds.has(item.id);
+
     return (
       <Pressable
         onPress={() => handleLogPress(item)}
+        onLongPress={() => {
+          if (!isSelectMode) {
+            setIsSelectMode(true);
+            setSelectedIds(new Set([item.id]));
+          }
+        }}
         style={({ pressed }) => [
           {
             opacity: pressed ? 0.9 : 1.0,
@@ -118,7 +188,44 @@ const History = () => {
           },
         ]}
       >
-        <View style={[styles.logCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: isDarkMode ? 1 : 0, minHeight: touchTarget("minHeight") + 10 }]}>
+        <View
+          style={[
+            styles.logCard,
+            {
+              backgroundColor: isChecked
+                ? isDarkMode ? "#1b2d1c" : "#d6f5d6"
+                : theme.card,
+              borderColor: isChecked
+                ? isDarkMode ? "#81c784" : "#2e7d32"
+                : theme.cardBorder,
+              borderWidth: isChecked ? 1.5 : isDarkMode ? 1 : 0,
+              minHeight: touchTarget("minHeight") + 10,
+            },
+          ]}
+        >
+          {/* Checkbox (visible in select mode) */}
+          {isSelectMode && (
+            <View style={[styles.checkboxContainer, { marginRight: 12 }]}>
+              <View
+                style={[
+                  styles.checkbox,
+                  {
+                    borderColor: isChecked
+                      ? isDarkMode ? "#81c784" : "#2e7d32"
+                      : isDarkMode ? "#555" : "#bbb",
+                    backgroundColor: isChecked
+                      ? isDarkMode ? "#81c784" : "#2e7d32"
+                      : "transparent",
+                  },
+                ]}
+              >
+                {isChecked && (
+                  <MaterialIcons name="check" size={14} color="white" />
+                )}
+              </View>
+            </View>
+          )}
+
           <View style={styles.iconContainer}>
             <FontAwesome6 name="circle-check" size={fontSize("lg")} color="#026e02" />
           </View>
@@ -137,29 +244,97 @@ const History = () => {
     );
   };
 
+  const allSelected = logs.length > 0 && selectedIds.size === logs.length;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar translucent backgroundColor="transparent" barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <LinearGradient colors={isDarkMode ? ["#37474f", "#212121"] : ["#67fc67", "#026e02"]}>
         <View style={{ width: "100%", height: statusBarHeight }}></View>
         <View style={styles.header}>
+          {/* Left: back or cancel */}
           <Pressable
-            onPress={() => router.back()}
+            onPress={isSelectMode ? toggleSelectMode : () => router.back()}
             style={[styles.backButton, { minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }]}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
-            <Entypo name="chevron-left" size={fontSize("xl") * 1.2} color="#ffffff" />
+            {isSelectMode ? (
+              <Text style={[styles.headerActionText, { fontSize: fontSize("sm") }]}>Cancel</Text>
+            ) : (
+              <Entypo name="chevron-left" size={fontSize("xl") * 1.2} color="#ffffff" />
+            )}
           </Pressable>
-          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>Intake History</Text>
-          {logs.length > 0 ? (
-            <Pressable onPress={handleClear} style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }}>
-              <Entypo name="trash" size={fontSize("lg")} color="#ffffff" />
+
+          {/* Center: title */}
+          <Text style={[styles.headerTitle, { fontSize: fontSize("xl") }]}>
+            {isSelectMode
+              ? selectedIds.size > 0
+                ? `${selectedIds.size} Selected`
+                : "Select Records"
+              : "Intake History"}
+          </Text>
+
+          {/* Right: actions */}
+          {isSelectMode ? (
+            <Pressable
+              onPress={handleDeleteSelected}
+              disabled={selectedIds.size === 0}
+              style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center", opacity: selectedIds.size === 0 ? 0.4 : 1 }}
+            >
+              <Text style={[styles.headerActionText, styles.deleteActionText, { fontSize: fontSize("sm") }]}>Delete</Text>
             </Pressable>
+          ) : logs.length > 0 ? (
+            <View style={styles.headerRightGroup}>
+              <Pressable
+                onPress={toggleSelectMode}
+                style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center" }}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <Text style={[styles.headerActionText, { fontSize: fontSize("sm") }]}>Select</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleClearAll}
+                style={{ minHeight: touchTarget("minHeight") / 1.2, justifyContent: "center", marginLeft: 12 }}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <Entypo name="trash" size={fontSize("lg")} color="#ffffff" />
+              </Pressable>
+            </View>
           ) : (
             <View style={{ width: 24 }} />
           )}
         </View>
+
+        {/* Select All row — visible in select mode */}
+        {isSelectMode && logs.length > 0 && (
+          <Pressable onPress={toggleSelectAll} style={styles.selectAllRow}>
+            <View
+              style={[
+                styles.checkbox,
+                {
+                  borderColor: allSelected ? "white" : "rgba(255,255,255,0.6)",
+                  backgroundColor: allSelected ? "white" : "transparent",
+                },
+              ]}
+            >
+              {allSelected && <MaterialIcons name="check" size={14} color="#026e02" />}
+            </View>
+            <Text style={[styles.selectAllText, { fontSize: fontSize("sm") }]}>
+              {allSelected ? "Deselect All" : "Select All"}
+            </Text>
+          </Pressable>
+        )}
       </LinearGradient>
+
+      {/* Warning banner in select mode */}
+      {isSelectMode && (
+        <View style={[styles.warningBanner, { backgroundColor: isDarkMode ? "#4a1212" : "#fff3cd", borderColor: isDarkMode ? "#b71c1c" : "#e6a817" }]}>
+          <MaterialIcons name="warning" size={fontSize("sm")} color={isDarkMode ? "#ef9a9a" : "#c7820a"} />
+          <Text style={[styles.warningText, { color: isDarkMode ? "#ef9a9a" : "#856404", fontSize: fontSize("xs") }]}>
+            Deleted records cannot be recovered. This action is permanent.
+          </Text>
+        </View>
+      )}
 
       {logs.length > 0 ? (
         <FlatList
@@ -167,6 +342,7 @@ const History = () => {
           keyExtractor={(item: IntakeLog) => item.id}
           renderItem={renderLogItem}
           contentContainerStyle={styles.listContent}
+          extraData={[selectedIds, isSelectMode]}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -174,6 +350,7 @@ const History = () => {
           <Text style={[styles.emptyText, { color: theme.text, fontSize: fontSize("md") }]}>No medication history logged yet.</Text>
         </View>
       )}
+
       {/* Detailed Intake History Modal */}
       <Modal
         visible={isDetailsModalVisible}
@@ -339,10 +516,65 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+    minWidth: 60,
   },
   headerTitle: {
     color: "white",
     fontFamily: "ComicBold",
+    flex: 1,
+    textAlign: "center",
+  },
+  headerRightGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 60,
+    justifyContent: "flex-end",
+  },
+  headerActionText: {
+    color: "white",
+    fontFamily: "ComicBold",
+  },
+  deleteActionText: {
+    color: "#ffcdd2",
+  },
+  selectAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingBottom: 12,
+    gap: 10,
+  },
+  selectAllText: {
+    color: "white",
+    fontFamily: "ComicRegular",
+  },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 15,
+    marginTop: 12,
+    marginBottom: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  warningText: {
+    fontFamily: "ComicRegular",
+    flex: 1,
+  },
+  checkboxContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   listContent: {
     padding: 15,
@@ -512,6 +744,7 @@ const styles = StyleSheet.create({
   },
   zoomCloseButton: {
     position: "absolute",
+    top: 60,
     right: 20,
     zIndex: 10,
     backgroundColor: "rgba(255,255,255,0.2)",
