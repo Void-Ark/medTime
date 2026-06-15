@@ -28,7 +28,7 @@ export interface MedInstance {
   scheduledTime: Date;
   isTaken: boolean;
   canTake: boolean;
-  statusText: "Taken" | "Locked" | "Take" | "Missed";
+  statusText: "Taken" | "Locked" | "Take" | "Missed" | "Snoozed";
 }
 
 const Calendar = () => {
@@ -154,7 +154,7 @@ const Calendar = () => {
 
         // Determine availability
         let canTake = false;
-        let statusText: "Taken" | "Locked" | "Take" | "Missed" = "Take";
+        let statusText: "Taken" | "Locked" | "Take" | "Missed" | "Snoozed" = "Take";
 
         if (isInstanceTaken) {
           statusText = "Taken";
@@ -166,7 +166,11 @@ const Calendar = () => {
             statusText = "Locked";
           } else if (now >= windowStartTime && now <= windowEndTime) {
             canTake = true;
-            statusText = "Take";
+            if (med.snoozedUntil && new Date(med.snoozedUntil) > now) {
+              statusText = "Snoozed";
+            } else {
+              statusText = "Take";
+            }
           } else {
             statusText = "Missed";
           }
@@ -247,6 +251,7 @@ const Calendar = () => {
     const isTaken = item.statusText === "Taken";
     const isLocked = item.statusText === "Locked";
     const isMissed = item.statusText === "Missed";
+    const isSnoozed = item.statusText === "Snoozed";
 
     const medIconSize = fontSize("lg") * 2.5;
 
@@ -270,7 +275,7 @@ const Calendar = () => {
                   : "prescription-bottle"
               }
               size={fontSize("lg")}
-              color={isTaken ? "#81c784" : isMissed ? "#e57373" : "#026e02"}
+              color={isTaken ? "#81c784" : isMissed ? "#e57373" : isSnoozed ? "#ffb74d" : "#026e02"}
             />
           )}
         </View>
@@ -298,6 +303,7 @@ const Calendar = () => {
             isTaken && styles.checkButtonActive,
             isLocked && [styles.checkButtonLocked, { backgroundColor: theme.border, borderColor: theme.border }],
             isMissed && [styles.checkButtonMissed, { backgroundColor: isDarkMode ? "#2d1a1a" : "#ffebee", borderColor: isDarkMode ? "#822727" : "#ffcdd2" }],
+            isSnoozed && { backgroundColor: isDarkMode ? "#2d2417" : "#fffde7", borderColor: isDarkMode ? "#825e27" : "#fff59d" },
           ]}
           onPress={() => handleMarkTaken(item.medicine.id, item.scheduledTime)}
           disabled={!item.canTake}
@@ -311,6 +317,7 @@ const Calendar = () => {
                 { color: isDarkMode ? "#81c784" : "#026e02", fontSize: fontSize("xs") },
                 isLocked && [styles.checkTextLocked, { color: theme.subText }],
                 isMissed && [styles.checkTextMissed, { color: isDarkMode ? "#e57373" : "#c62828" }],
+                isSnoozed && { color: isDarkMode ? "#ffb74d" : "#ef6c00" },
               ]}
             >
               {item.statusText}

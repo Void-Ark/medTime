@@ -47,6 +47,13 @@ db.execSync(`
   );
 `);
 
+// Safe schema migration to add column snoozedUntil
+try {
+  db.execSync("ALTER TABLE medicines ADD COLUMN snoozedUntil TEXT;");
+} catch (error) {
+  // Column already exists, safe to ignore
+}
+
 // Model mapping helpers
 export function mapRowToMedicine(row: any): Medicine {
   return {
@@ -73,6 +80,7 @@ export function mapRowToMedicine(row: any): Medicine {
     isArchived: row.isArchived === 1,
     refillThreshold: row.refillThreshold !== null && row.refillThreshold !== undefined ? row.refillThreshold : undefined,
     notificationTriggerIds: row.notificationTriggerIds ? JSON.parse(row.notificationTriggerIds) : undefined,
+    snoozedUntil: row.snoozedUntil || undefined,
     createdAt: row.createdAt || undefined,
     updatedAt: row.updatedAt || undefined,
   };
@@ -105,6 +113,7 @@ export function mapMedicineToValues(med: Medicine): any[] {
     med.notificationTriggerIds ? JSON.stringify(med.notificationTriggerIds) : null,
     med.createdAt ? (typeof med.createdAt === 'string' ? med.createdAt : med.createdAt.toISOString()) : new Date().toISOString(),
     med.updatedAt ? (typeof med.updatedAt === 'string' ? med.updatedAt : med.updatedAt.toISOString()) : new Date().toISOString(),
+    med.snoozedUntil ? (typeof med.snoozedUntil === 'string' ? med.snoozedUntil : med.snoozedUntil.toISOString()) : null,
   ];
 }
 
@@ -135,8 +144,8 @@ export async function migrateFromAsyncStorage() {
           for (const med of medicines) {
             const vals = mapMedicineToValues(med);
             await db.runAsync(`
-              INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+              INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt, snoozedUntil)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             `, vals);
           }
           console.log("Medicines migration complete successfully.");
@@ -230,8 +239,8 @@ export async function importBackupData(parsed: { medicines: any[]; history?: any
     
     const vals = mapMedicineToValues(med);
     await db.runAsync(`
-      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt, snoozedUntil)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `, vals);
   }
 

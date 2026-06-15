@@ -12,7 +12,7 @@ export interface MedCardProps {
   time: Date;
   taken: boolean;
   imageUrl?: string;
-  statusText?: "Taken" | "Locked" | "Take" | "Missed";
+  statusText?: "Taken" | "Locked" | "Take" | "Missed" | "Snoozed";
 }
 
 export default function MedCard({
@@ -54,6 +54,12 @@ export default function MedCard({
     statusColor = isDarkMode ? "#64b5f6" : "#1565c0";
     iconColor = isDarkMode ? "#64b5f6" : "#1565c0";
     displayStatus = "Take Now";
+  } else if (currentStatus === "Snoozed") {
+    cardBg = isDarkMode ? "#2d2417" : "#fffde7";
+    cardBorder = isDarkMode ? "#825e27" : "#fff59d";
+    statusColor = isDarkMode ? "#ffb74d" : "#ef6c00";
+    iconColor = isDarkMode ? "#ffb74d" : "#ef6c00";
+    displayStatus = "Snoozed";
   } else if (currentStatus === "Locked") {
     cardBg = theme.card;
     cardBorder = theme.border;

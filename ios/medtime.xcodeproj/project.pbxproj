@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A2488FC2F026FBA05FC230A /* libPods-medtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E9101F2CB76F891EA970A6DB /* libPods-medtime.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		5E0C1939C8AD607C89C13BFB /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2B58AA1AC5AF943445DA89 /* ExpoModulesProvider.swift */; };
+		77E804F8155C8C0D00FD9224 /* libPods-medtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 034183DAF419A8CADF1E432D /* libPods-medtime.a */; };
+		7FEE95BF4BFD36FD5D3EC195 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BBE2ECE8809FB49011E58D4F /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		EDE112C2242E6DABC1E6D53E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5AFD04C937AC86EE60FE4635 /* PrivacyInfo.xcprivacy */; };
+		EA43EC3DF996AA4EEC5BC094 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40C9243C1360BA80A9A796B /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		034183DAF419A8CADF1E432D /* libPods-medtime.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-medtime.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07F961A680F5B00A75B9A /* medtime.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = medtime.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = medtime/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = medtime/Info.plist; sourceTree = "<group>"; };
-		5AFD04C937AC86EE60FE4635 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = medtime/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		5B2B58AA1AC5AF943445DA89 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-medtime/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		734564B50DCD25D0BE6A478F /* Pods-medtime.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-medtime.release.xcconfig"; path = "Target Support Files/Pods-medtime/Pods-medtime.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = medtime/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		E9101F2CB76F891EA970A6DB /* libPods-medtime.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-medtime.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		ECBCF6F7B05DAEAA396800E2 /* Pods-medtime.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-medtime.debug.xcconfig"; path = "Target Support Files/Pods-medtime/Pods-medtime.debug.xcconfig"; sourceTree = "<group>"; };
+		BBE2ECE8809FB49011E58D4F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = medtime/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C9BC1C30AA55D5C16B885CE9 /* Pods-medtime.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-medtime.release.xcconfig"; path = "Target Support Files/Pods-medtime/Pods-medtime.release.xcconfig"; sourceTree = "<group>"; };
+		D40C9243C1360BA80A9A796B /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-medtime/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = medtime/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* medtime-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "medtime-Bridging-Header.h"; path = "medtime/medtime-Bridging-Header.h"; sourceTree = "<group>"; };
+		F72D1E7DD44D78664EA2152F /* Pods-medtime.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-medtime.debug.xcconfig"; path = "Target Support Files/Pods-medtime/Pods-medtime.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A2488FC2F026FBA05FC230A /* libPods-medtime.a in Frameworks */,
+				77E804F8155C8C0D00FD9224 /* libPods-medtime.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				5AFD04C937AC86EE60FE4635 /* PrivacyInfo.xcprivacy */,
+				BBE2ECE8809FB49011E58D4F /* PrivacyInfo.xcprivacy */,
 			);
 			name = medtime;
 			sourceTree = "<group>";
@@ -62,17 +62,19 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				E9101F2CB76F891EA970A6DB /* libPods-medtime.a */,
+				034183DAF419A8CADF1E432D /* libPods-medtime.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		3723DF6FD91BE9510E2E1C87 /* ExpoModulesProviders */ = {
+		6315C4737AC347B16E92C79A /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				93B0F76D04F98DB5A30E4C03 /* medtime */,
+				F72D1E7DD44D78664EA2152F /* Pods-medtime.debug.xcconfig */,
+				C9BC1C30AA55D5C16B885CE9 /* Pods-medtime.release.xcconfig */,
 			);
-			name = ExpoModulesProviders;
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -89,8 +91,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				D73F9D0A674FE602A27CB790 /* Pods */,
-				3723DF6FD91BE9510E2E1C87 /* ExpoModulesProviders */,
+				6315C4737AC347B16E92C79A /* Pods */,
+				D6087BD666F04EAD82123B07 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -105,14 +107,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		93B0F76D04F98DB5A30E4C03 /* medtime */ = {
-			isa = PBXGroup;
-			children = (
-				5B2B58AA1AC5AF943445DA89 /* ExpoModulesProvider.swift */,
-			);
-			name = medtime;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -122,14 +116,20 @@
 			path = medtime/Supporting;
 			sourceTree = "<group>";
 		};
-		D73F9D0A674FE602A27CB790 /* Pods */ = {
+		D531420A90C5048D58FE88D1 /* medtime */ = {
 			isa = PBXGroup;
 			children = (
-				ECBCF6F7B05DAEAA396800E2 /* Pods-medtime.debug.xcconfig */,
-				734564B50DCD25D0BE6A478F /* Pods-medtime.release.xcconfig */,
+				D40C9243C1360BA80A9A796B /* ExpoModulesProvider.swift */,
 			);
-			name = Pods;
-			path = Pods;
+			name = medtime;
+			sourceTree = "<group>";
+		};
+		D6087BD666F04EAD82123B07 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				D531420A90C5048D58FE88D1 /* medtime */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "medtime" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				7B28AB3938F64647659381B7 /* [Expo] Configure project */,
+				2F771D21916ADCA8B72B3C7C /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				C704232382DC319B60F4E828 /* [CP] Embed Pods Frameworks */,
+				8624555AB2B880C0B4D131D0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				EDE112C2242E6DABC1E6D53E /* PrivacyInfo.xcprivacy in Resources */,
+				7FEE95BF4BFD36FD5D3EC195 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,7 +240,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		7B28AB3938F64647659381B7 /* [Expo] Configure project */ = {
+		2F771D21916ADCA8B72B3C7C /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -305,7 +305,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-medtime/Pods-medtime-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C704232382DC319B60F4E828 /* [CP] Embed Pods Frameworks */ = {
+		8624555AB2B880C0B4D131D0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -331,7 +331,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				5E0C1939C8AD607C89C13BFB /* ExpoModulesProvider.swift in Sources */,
+				EA43EC3DF996AA4EEC5BC094 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,7 +340,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = ECBCF6F7B05DAEAA396800E2 /* Pods-medtime.debug.xcconfig */;
+			baseConfigurationReference = F72D1E7DD44D78664EA2152F /* Pods-medtime.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -352,7 +352,7 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = medtime/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -376,14 +376,14 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 734564B50DCD25D0BE6A478F /* Pods-medtime.release.xcconfig */;
+			baseConfigurationReference = C9BC1C30AA55D5C16B885CE9 /* Pods-medtime.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = medtime/medtime.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = medtime/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -451,7 +451,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -510,7 +510,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",

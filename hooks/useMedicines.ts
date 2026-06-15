@@ -8,6 +8,7 @@ import {
   updateMedicine,
   refillMedicineStock,
   updateMedicineStock,
+  snoozeMedicine,
 } from "@/storage/medicines";
 
 export function useMedicines() {
@@ -109,6 +110,19 @@ export function useMedicines() {
   };
 
 
+  const snoozeMed = async (id: string, minutes: number): Promise<boolean> => {
+    try {
+      const success = await snoozeMedicine(id, minutes);
+      if (success) {
+        await fetchMedicines();
+      }
+      return success;
+    } catch (err) {
+      console.error("useMedicines snoozeMed error:", err);
+      return false;
+    }
+  };
+
   return {
     medicines,
     isLoading,
@@ -118,6 +132,7 @@ export function useMedicines() {
     updateMed,
     refillMed,
     updateStock,
+    snoozeMed,
     refresh: fetchMedicines,
   };
 }

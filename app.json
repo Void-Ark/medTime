@@ -17,6 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.medtime",
+      "deploymentTarget": "16.0",
       "icon": {
         "light": "./assets/icon-light.png",
         "dark": "./assets/icon-dark.png"
@@ -49,7 +50,13 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "./plugins/withIosDeploymentTarget",
+        {
+          "deploymentTarget": "15.5"
+        }
+      ]
     ]
   }
 }

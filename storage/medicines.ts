@@ -4,6 +4,7 @@ import { addHistoryEntry } from "./history";
 import {
   scheduleMedicationNotifications,
   cancelScheduledNotifications,
+  scheduleSnoozedNotification,
 } from "../services/notificationService";
 import { deleteImageFromAppStorage } from "../utils/imageStorage";
 
@@ -22,8 +23,8 @@ export async function addMedicine(newMedicine: Medicine): Promise<boolean> {
 
     const vals = mapMedicineToValues(medWithTriggers);
     await db.runAsync(`
-      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt, snoozedUntil)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `, vals);
     return true;
   } catch (error) {
@@ -147,7 +148,8 @@ export async function markAsTaken(id: string): Promise<boolean> {
         stockCount = ?, 
         lastTaken = ?, 
         notificationTriggerIds = ?, 
-        nextDose = ? 
+        nextDose = ?,
+        snoozedUntil = NULL
       WHERE id = ?;
     `, [
       newStock, 
@@ -196,8 +198,8 @@ export async function updateMedicine(updatedMed: Medicine): Promise<boolean> {
 
     const vals = mapMedicineToValues(medWithNewTriggers);
     await db.runAsync(`
-      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      INSERT OR REPLACE INTO medicines (id, name, dosage, frequency, timings, startDate, endDate, stockCount, taken, reminder, missedTimes, notes, type, patternType, pattern, category, imageUrl, lastTaken, nextDose, reminderSound, isArchived, refillThreshold, notificationTriggerIds, createdAt, updatedAt, snoozedUntil)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `, vals);
 
     return true;
@@ -235,6 +237,41 @@ export async function updateMedicineStock(id: string, newStock: number): Promise
     return true;
   } catch (error) {
     console.error("Error updating medicine stock count:", error);
+    return false;
+  }
+}
+
+export async function snoozeMedicine(id: string, minutes: number): Promise<boolean> {
+  try {
+    const row = await db.getFirstAsync("SELECT * FROM medicines WHERE id = ?;", [id]);
+    if (!row) return false;
+
+    const medicineToSnooze = mapRowToMedicine(row);
+
+    // 1. Cancel previous notifications
+    if (medicineToSnooze.notificationTriggerIds) {
+      await cancelScheduledNotifications(medicineToSnooze.notificationTriggerIds);
+    }
+
+    // 2. Schedule snoozed notification
+    const snoozeTime = new Date(Date.now() + minutes * 60 * 1000);
+    const newTriggerIds = await scheduleSnoozedNotification(medicineToSnooze, snoozeTime);
+
+    // 3. Save to database
+    await db.runAsync(`
+      UPDATE medicines SET
+        snoozedUntil = ?,
+        notificationTriggerIds = ?
+      WHERE id = ?;
+    `, [
+      snoozeTime.toISOString(),
+      newTriggerIds ? JSON.stringify(newTriggerIds) : null,
+      id
+    ]);
+
+    return true;
+  } catch (error) {
+    console.error("Error snoozing medicine:", error);
     return false;
   }
 }

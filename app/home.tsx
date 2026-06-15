@@ -41,7 +41,7 @@ const Home = () => {
 
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; type: "missed" | "low_stock"; time?: Date }>>([]);
-  const { medicines, takeMed, refresh } = useMedicines();
+  const { medicines, takeMed, snoozeMed, refresh } = useMedicines();
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [todayMeds, setTodayMeds] = useState<MedInstance[]>([]);
   const [selectedMedInstance, setSelectedMedInstance] = useState<MedInstance | null>(null);
@@ -66,6 +66,17 @@ const Home = () => {
       setIsPhotoModalVisible(false);
     } else {
       Alert.alert("Error", "Failed to mark medication as taken.");
+    }
+  };
+
+  const handleSnoozeMedication = async (medInstance: MedInstance, minutes: number) => {
+    const success = await snoozeMed(medInstance.medicine.id, minutes);
+    if (success) {
+      await loadAllData();
+      setIsPhotoModalVisible(false);
+      Alert.alert("Snoozed", `Medication reminder delayed by ${minutes} minutes.`);
+    } else {
+      Alert.alert("Error", "Failed to snooze medication.");
     }
   };
 
@@ -154,7 +165,7 @@ const Home = () => {
 
         // Determine availability
         let canTake = false;
-        let statusText: "Taken" | "Locked" | "Take" | "Missed" = "Take";
+        let statusText: "Taken" | "Locked" | "Take" | "Missed" | "Snoozed" = "Take";
 
         const windowStartTime = new Date(scheduledTime.getTime() - 60 * 60 * 1000);
         const windowEndTime = new Date(scheduledTime.getTime() + 60 * 60 * 1000);
@@ -164,7 +175,11 @@ const Home = () => {
           statusText = "Locked";
         } else if (today >= windowStartTime && today <= windowEndTime) {
           canTake = true;
-          statusText = "Take";
+          if (med.snoozedUntil && new Date(med.snoozedUntil) > today) {
+            statusText = "Snoozed";
+          } else {
+            statusText = "Take";
+          }
         } else {
           statusText = "Missed";
         }
@@ -469,45 +484,59 @@ const Home = () => {
 
                 {/* Intake Status Badge */}
                 <View style={styles.statusBadgeRow}>
-                  {selectedMedInstance.isTaken ? (
-                    <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? "#152e1f" : "#e8f5e9", borderColor: isDarkMode ? "#1e5e3a" : "#c8e6c9" }]}>
-                      <MaterialIcons name="check-circle" size={fontSize("sm")} color={isDarkMode ? "#81c784" : "#2e7d32"} />
-                      <Text style={[styles.statusBadgeText, { color: isDarkMode ? "#81c784" : "#2e7d32", fontSize: fontSize("sm") }]}>
-                        Taken
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: selectedMedInstance.statusText === "Missed" 
-                          ? (isDarkMode ? "#2d1a1a" : "#ffebee") 
-                          : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#132535" : "#e3f2fd") : (isDarkMode ? "#2e2e2e" : "#f5f5f5")),
-                        borderColor: selectedMedInstance.statusText === "Missed" 
-                          ? (isDarkMode ? "#822727" : "#ffcdd2") 
-                          : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#1d4f7c" : "#90caf9") : (isDarkMode ? "#444" : "#e0e0e0"))
+                  {(() => {
+                    const status = selectedMedInstance.statusText;
+                    if (selectedMedInstance.isTaken || status === "Taken") {
+                      return (
+                        <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? "#152e1f" : "#e8f5e9", borderColor: isDarkMode ? "#1e5e3a" : "#c8e6c9" }]}>
+                          <MaterialIcons name="check-circle" size={fontSize("sm")} color={isDarkMode ? "#81c784" : "#2e7d32"} />
+                          <Text style={[styles.statusBadgeText, { color: isDarkMode ? "#81c784" : "#2e7d32", fontSize: fontSize("sm") }]}>
+                            Taken
+                          </Text>
+                        </View>
+                      );
+                    }
+
+                    let badgeBg = isDarkMode ? "#2e2e2e" : "#f5f5f5";
+                    let badgeBorder = isDarkMode ? "#444" : "#e0e0e0";
+                    let badgeIconColor = theme.subText;
+                    let badgeIconName: any = "lock";
+                    let badgeText = "Locked";
+
+                    if (status === "Missed") {
+                      badgeBg = isDarkMode ? "#2d1a1a" : "#ffebee";
+                      badgeBorder = isDarkMode ? "#822727" : "#ffcdd2";
+                      badgeIconColor = isDarkMode ? "#e57373" : "#c62828";
+                      badgeIconName = "error";
+                      badgeText = "Missed";
+                    } else if (status === "Take") {
+                      badgeBg = isDarkMode ? "#132535" : "#e3f2fd";
+                      badgeBorder = isDarkMode ? "#1d4f7c" : "#90caf9";
+                      badgeIconColor = isDarkMode ? "#64b5f6" : "#1565c0";
+                      badgeIconName = "play-arrow";
+                      badgeText = "Take Now";
+                    } else if (status === "Snoozed") {
+                      badgeBg = isDarkMode ? "#2d2417" : "#fffde7";
+                      badgeBorder = isDarkMode ? "#825e27" : "#fff59d";
+                      badgeIconColor = isDarkMode ? "#ffb74d" : "#ef6c00";
+                      badgeIconName = "snooze";
+                      let timeSuffix = "";
+                      if (selectedMedInstance.medicine.snoozedUntil) {
+                        const date = new Date(selectedMedInstance.medicine.snoozedUntil);
+                        timeSuffix = ` (until ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})`;
                       }
-                    ]}>
-                      <MaterialIcons 
-                        name={selectedMedInstance.statusText === "Missed" ? "error" : (selectedMedInstance.statusText === "Take" ? "play-arrow" : "lock")} 
-                        size={fontSize("sm")} 
-                        color={selectedMedInstance.statusText === "Missed" 
-                          ? (isDarkMode ? "#e57373" : "#c62828") 
-                          : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText)} 
-                      />
-                      <Text style={[
-                        styles.statusBadgeText,
-                        {
-                          color: selectedMedInstance.statusText === "Missed" 
-                            ? (isDarkMode ? "#e57373" : "#c62828") 
-                            : (selectedMedInstance.statusText === "Take" ? (isDarkMode ? "#64b5f6" : "#1565c0") : theme.subText),
-                          fontSize: fontSize("sm"),
-                        }
-                      ]}>
-                        {selectedMedInstance.statusText === "Missed" ? "Missed" : (selectedMedInstance.statusText === "Take" ? "Take Now" : (selectedMedInstance.statusText === "Locked" ? "Locked" : "Not Taken"))}
-                      </Text>
-                    </View>
-                  )}
+                      badgeText = `Snoozed${timeSuffix}`;
+                    }
+
+                    return (
+                      <View style={[styles.statusBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+                        <MaterialIcons name={badgeIconName} size={fontSize("sm")} color={badgeIconColor} />
+                        <Text style={[styles.statusBadgeText, { color: badgeIconColor, fontSize: fontSize("sm") }]}>
+                          {badgeText}
+                        </Text>
+                      </View>
+                    );
+                  })()}
                 </View>
  
                 {/* Timing Info */}
@@ -534,6 +563,34 @@ const Home = () => {
                       <Text style={[styles.modalActionText, { fontSize: fontSize("sm") }]}>Take Medication Now</Text>
                     </LinearGradient>
                   </Pressable>
+                )}
+
+                {/* Snooze Options */}
+                {selectedMedInstance.canTake && (
+                  <View style={styles.snoozeRow}>
+                    <Pressable
+                      onPress={() => handleSnoozeMedication(selectedMedInstance, 15)}
+                      style={({ pressed }) => [
+                        styles.snoozeButton,
+                        { borderColor: theme.border },
+                        pressed && { opacity: 0.8 }
+                      ]}
+                    >
+                      <MaterialIcons name="snooze" size={fontSize("sm")} color={theme.text} style={{ marginRight: 4 }} />
+                      <Text style={[styles.snoozeButtonText, { color: theme.text, fontSize: fontSize("sm") }]}>Snooze (15m)</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleSnoozeMedication(selectedMedInstance, 30)}
+                      style={({ pressed }) => [
+                        styles.snoozeButton,
+                        { borderColor: theme.border },
+                        pressed && { opacity: 0.8 }
+                      ]}
+                    >
+                      <MaterialIcons name="snooze" size={fontSize("sm")} color={theme.text} style={{ marginRight: 4 }} />
+                      <Text style={[styles.snoozeButtonText, { color: theme.text, fontSize: fontSize("sm") }]}>Snooze (30m)</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
             )}
@@ -838,6 +895,25 @@ const styles = StyleSheet.create({
   modalActionText: {
     color: "white",
     fontSize: 16,
+    fontFamily: "ComicBold",
+  },
+  snoozeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 10,
+    marginTop: 10,
+  },
+  snoozeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  snoozeButtonText: {
     fontFamily: "ComicBold",
   },
 });

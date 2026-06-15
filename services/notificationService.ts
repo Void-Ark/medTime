@@ -14,6 +14,25 @@ try {
       shouldBadge: true,
     } as any),
   });
+
+  Notifications.setNotificationCategoryAsync("medtime-actions", [
+    {
+      identifier: "take",
+      buttonTitle: "Take",
+      options: {
+        isDestructive: false,
+        isAuthenticationRequired: false,
+      },
+    },
+    {
+      identifier: "snooze-15",
+      buttonTitle: "Snooze (15m)",
+      options: {
+        isDestructive: false,
+        isAuthenticationRequired: false,
+      },
+    },
+  ]);
 } catch (error) {
   console.warn("Expo Notifications native module not loaded yet. Rebuild the native app to enable lockscreen reminders.", error);
 }
@@ -213,6 +232,7 @@ export async function scheduleMedicationNotifications(
             sound: "default",
             priority: Notifications.AndroidNotificationPriority.MAX,
             data: { medicineId: medicine.id },
+            categoryIdentifier: "medtime-actions",
             ...(Platform.OS === "android" && { channelId }),
           },
           trigger: { type: "date", date: triggerTime } as any,
@@ -234,6 +254,7 @@ export async function scheduleMedicationNotifications(
           sound: "default",
           priority: Notifications.AndroidNotificationPriority.MAX,
           data: { medicineId: medicine.id },
+          categoryIdentifier: "medtime-actions",
           ...(Platform.OS === "android" && { channelId }),
         },
         trigger: { type: "date", date: windowEnd } as any,
@@ -245,6 +266,45 @@ export async function scheduleMedicationNotifications(
   }
 
   return { triggerIds, nextDose: nextActiveTime.toISOString() };
+}
+
+/**
+ * 2b. Schedule a single targeted snooze notification
+ */
+export async function scheduleSnoozedNotification(
+  medicine: Medicine,
+  snoozeTime: Date
+): Promise<string[]> {
+  const isEnabled = await registerForPushNotificationsAsync();
+  if (!isEnabled) {
+    console.log("Push notifications are disabled or unavailable.");
+    return [];
+  }
+
+  const loudAlarmsStr = await AsyncStorage.getItem("loud_alarms_enabled");
+  const loudAlarmsEnabled = loudAlarmsStr !== "false"; // Default to true
+  const channelId = loudAlarmsEnabled ? "medtime-meds-loud" : "medtime-meds";
+
+  const triggerIds: string[] = [];
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Snoozed Medication Reminder ⏰",
+        body: `It's time to take your snoozed dose of ${medicine.name} (${medicine.dosage}).`,
+        sound: "default",
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        data: { medicineId: medicine.id, isSnooze: true },
+        categoryIdentifier: "medtime-actions",
+        ...(Platform.OS === "android" && { channelId }),
+      },
+      trigger: { type: "date", date: snoozeTime } as any,
+    });
+    triggerIds.push(id);
+  } catch (err) {
+    console.error("Error scheduling snoozed reminder:", err);
+  }
+
+  return triggerIds;
 }
 
 /**

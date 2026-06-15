@@ -44,6 +44,7 @@ export interface Medicine {
   isArchived?: boolean; // Marks the medicine as inactive or archived without deleting
   refillThreshold?: number; // Minimum stock before reminding user to refill
   notificationTriggerIds?: string[]; // Trigger IDs of expo notifications scheduled for this med
+  snoozedUntil?: Date | string; // Optional timestamp when medicine is snoozed until
   createdAt?: Date | string; // When this medicine was added to the app
   updatedAt?: Date | string; // Last time this medicine record was updated
 }

@@ -31,10 +31,28 @@ export default function Layout() {
     // Listen for notification interactions (e.g. lockscreeen clicks)
     let subscription: any;
     try {
-      subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      subscription = Notifications.addNotificationResponseReceivedListener(async (response) => {
         const data = response.notification.request.content.data;
+        const actionIdentifier = response.actionIdentifier;
         if (data && data.medicineId) {
-          router.push("/calendar");
+          const { markAsTaken, snoozeMedicine } = require("@/storage/medicines");
+          if (actionIdentifier === "take") {
+            try {
+              await markAsTaken(data.medicineId);
+              router.replace("/home");
+            } catch (err) {
+              console.error("Failed to mark as taken from notification:", err);
+            }
+          } else if (actionIdentifier === "snooze-15") {
+            try {
+              await snoozeMedicine(data.medicineId, 15);
+              router.replace("/home");
+            } catch (err) {
+              console.error("Failed to snooze from notification:", err);
+            }
+          } else {
+            router.push("/calendar");
+          }
         }
       });
     } catch (err) {
