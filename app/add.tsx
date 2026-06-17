@@ -90,10 +90,19 @@ const MedicationAdd = () => {
   useEffect(() => {
     if (isEditMode && !isLoaded) return; // Skip during initial populating load
     
-    if (timings.length !== frequency) {
-      !frequency || frequency === 0
-        ? setTimings([new Date(Date.now())])
-        : setTimings(Array.from({ length: frequency }, () => new Date()));
+    const targetFreq = !frequency || isNaN(frequency) || frequency < 1 ? 1 : frequency;
+    if (timings.length !== targetFreq) {
+      setTimings((prevTimings) => {
+        const newTimings = [...prevTimings].map(t => typeof t === "string" ? new Date(t) : t);
+        if (newTimings.length < targetFreq) {
+          while (newTimings.length < targetFreq) {
+            newTimings.push(new Date());
+          }
+        } else if (newTimings.length > targetFreq) {
+          newTimings.splice(targetFreq);
+        }
+        return newTimings;
+      });
     }
   }, [frequency, isLoaded]);
 
@@ -129,7 +138,7 @@ const MedicationAdd = () => {
       id: medId,
       name: name.trim(),
       dosage: dosage.trim(),
-      frequency,
+      frequency: !frequency || isNaN(frequency) || frequency < 1 ? 1 : frequency,
       timings,
       startDate,
       endDate: isPermanent ? undefined : endDate,
@@ -239,7 +248,7 @@ const MedicationAdd = () => {
           value={frequency ? frequency.toString() : ""}
           onChangeText={(e: string) => {
             let value = parseInt(e);
-            setFrequency(value === 0 ? 1 : value);
+            setFrequency(isNaN(value) ? 0 : (value === 0 ? 1 : value));
           }}
           placeholder="no. of times a day"
           keyboardType="number-pad"

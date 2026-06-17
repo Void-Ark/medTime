@@ -7,8 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon-light.png",
     "userInterfaceStyle": "automatic",
-    "jsEngine": "hermes",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/icon-light.png",
       "resizeMode": "contain",
@@ -17,7 +15,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.medtime",
-      "deploymentTarget": "16.0",
       "icon": {
         "light": "./assets/icon-light.png",
         "dark": "./assets/icon-dark.png"
@@ -28,7 +25,6 @@
         "foregroundImage": "./assets/icon-light.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.anonymous.medtime"
     },
     "web": {

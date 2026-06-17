@@ -43,46 +43,40 @@ const TimeBox: React.FC<TimeBoxProps> = ({
 
   return (
     <View style={{ alignItems: "center" }}>
-      <View
-        style={{
-          borderWidth: 1,
-          borderColor: theme.inputBorder,
-          padding: 8,
-          margin: 6,
-          borderRadius: 10,
-          flexDirection: "row",
-          backgroundColor: theme.inputBg,
-          shadowColor: "#000",
-          shadowOpacity: isDarkMode ? 0.2 : 0.05,
-          shadowRadius: 2,
-          shadowOffset: { width: 0, height: 1 },
-          elevation: 1,
-          minHeight: touchTarget("minHeight") * 0.8,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Pressable
-          style={{
-            paddingLeft: 10,
+      <Pressable
+        onPress={() => setShowPicker(!showPicker)}
+        style={({ pressed }) => [
+          {
+            borderWidth: 1,
+            borderColor: theme.inputBorder,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            margin: 6,
+            borderRadius: 10,
             flexDirection: "row",
+            backgroundColor: theme.inputBg,
+            shadowColor: "#000",
+            shadowOpacity: isDarkMode ? 0.2 : 0.05,
+            shadowRadius: 2,
+            shadowOffset: { width: 0, height: 1 },
+            elevation: 1,
+            minHeight: touchTarget("minHeight") * 0.8,
             justifyContent: "center",
             alignItems: "center",
-            minHeight: "100%",
-          }}
-          onPress={() => setShowPicker(!showPicker)}
-        >
-          <Text style={{ fontSize: fontSize("sm"), fontFamily: "ComicBold", color: theme.text }}>
-            {hour}:{minute} {ampm}
-          </Text>
-          <Entypo
-            name="edit"
-            size={fontSize("sm")}
-            color={isDarkMode ? "#80cbc4" : "green"}
-            style={{ paddingHorizontal: 10 }}
-          />
-        </Pressable>
-      </View>
+            opacity: pressed ? 0.85 : 1.0,
+          }
+        ]}
+      >
+        <Text style={{ fontSize: fontSize("sm"), fontFamily: "ComicBold", color: theme.text }}>
+          {hour}:{minute} {ampm}
+        </Text>
+        <Entypo
+          name="edit"
+          size={fontSize("sm")}
+          color={isDarkMode ? "#80cbc4" : "green"}
+          style={{ paddingLeft: 10 }}
+        />
+      </Pressable>
       {showPicker && (
         Platform.OS === "ios" ? (
           <Modal
